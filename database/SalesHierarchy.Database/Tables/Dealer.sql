@@ -1,0 +1,6 @@
+﻿CREATE TABLE [dbo].[Dealer] (
+    [UniqueID] INT IDENTITY(1,1) NOT NULL,
+    [Name] NVARCHAR(200) NOT NULL,
+    [Code] NVARCHAR(50) NULL,
+    CONSTRAINT [PK_Dealer] PRIMARY KEY CLUSTERED ([UniqueID] ASC)
+);

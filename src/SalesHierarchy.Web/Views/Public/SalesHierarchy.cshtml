@@ -1,0 +1,13 @@
+﻿@model IEnumerable<SalesHierarchy.Core.DTOs.PublicSalesPersonDto>
+@{
+    ViewData["Title"] = "Public Sales Hierarchy";
+}
+<h2>Public Sales Hierarchy</h2>
+<table class="table">
+    <thead><tr><th>Name</th><th>Designation</th></tr></thead>
+    <tbody>
+    @foreach(var p in Model){
+        <tr><td>@p.Name</td><td>@p.Designation</td></tr>
+    }
+    </tbody>
+</table>

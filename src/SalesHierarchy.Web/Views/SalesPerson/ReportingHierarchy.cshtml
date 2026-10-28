@@ -1,0 +1,13 @@
+﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
+@{
+    ViewData["Title"] = "Reporting Hierarchy";
+}
+<h2>Reporting Hierarchy</h2>
+<table class="table">
+    <thead><tr><th>Name</th><th>Designation</th><th>ManagerId</th></tr></thead>
+    <tbody>
+    @foreach(var s in Model){
+        <tr><td>@s.Name</td><td>@s.Designation</td><td>@s.ManagerId</td></tr>
+    }
+    </tbody>
+</table>

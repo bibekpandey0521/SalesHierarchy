@@ -1,0 +1,11 @@
+﻿@model SalesHierarchy.Core.Models.PODStation
+@{
+    ViewData["Title"] = "Delete POD Station";
+}
+<h2>Delete POD Station</h2>
+<p>Are you sure you want to delete @Model.Name?</p>
+<form asp-action="DeletePODStation" method="post">
+    <input type="hidden" asp-for="ID" />
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-action="PODStations" class="btn btn-secondary">Cancel</a>
+</form>

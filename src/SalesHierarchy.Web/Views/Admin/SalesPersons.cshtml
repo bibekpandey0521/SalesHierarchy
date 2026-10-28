@@ -1,0 +1,15 @@
+﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
+@{
+    ViewData["Title"] = "Sales Persons";
+}
+<h2>Sales Persons</h2>
+<p><a asp-action="CreateSalesPersonAccount" class="btn btn-primary">Create Individual</a> | <a asp-action="BulkUpload" class="btn btn-secondary">Bulk Upload</a></p>
+@if(TempData["Message"] != null){ <div>@TempData["Message"]</div> }
+<table class="table">
+    <thead><tr><th>Name</th><th>Designation</th><th>ManagerId</th></tr></thead>
+    <tbody>
+    @foreach(var s in Model){
+        <tr><td>@s.Name</td><td>@s.Designation</td><td>@s.ManagerId</td></tr>
+    }
+    </tbody>
+</table>

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SalesHierarchy.Core/SalesHierarchy.Core.csproj" />
+    <Project Path="src/SalesHierarchy.Infrastructure/SalesHierarchy.Infrastructure.csproj" />
+    <Project Path="src/SalesHierarchy.Tests/SalesHierarchy.Tests.csproj" />
+    <Project Path="src/SalesHierarchy.Web/SalesHierarchy.Web.csproj" />
+  </Folder>
+</Solution>

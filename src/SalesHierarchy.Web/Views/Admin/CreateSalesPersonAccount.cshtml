@@ -1,0 +1,29 @@
+﻿@model SalesHierarchy.Core.Models.SalesPerson
+@{
+    ViewData["Title"] = "Create SalesPerson Account";
+    var managers = ViewBag.Managers as IEnumerable<SalesHierarchy.Core.Models.SalesPerson>;
+}
+<h2>Create SalesPerson (Individual)</h2>
+<form asp-action="CreateSalesPersonAccount" method="post">
+    <div class="form-group">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Designation"></label>
+        <input asp-for="Designation" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label asp-for="ManagerId">Reporting Manager</label>
+        <select asp-for="ManagerId" class="form-control">
+            <option value="">None</option>
+            @if(managers != null){
+                foreach(var m in managers){
+                    <option value="@m.ID">@m.Name</option>
+                }
+            }
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Create</button>
+</form>

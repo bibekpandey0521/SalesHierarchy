@@ -1,0 +1,17 @@
+﻿@model SalesHierarchy.Core.Models.PODStation
+@{
+    ViewData["Title"] = "Create POD Station";
+}
+<h2>Create POD Station</h2>
+<form asp-action="CreatePODStation" method="post">
+    <div class="form-group">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="OSSPODStationId"></label>
+        <input asp-for="OSSPODStationId" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary">Create</button>
+</form>

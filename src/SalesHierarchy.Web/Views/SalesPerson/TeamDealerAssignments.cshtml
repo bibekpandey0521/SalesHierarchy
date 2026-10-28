@@ -1,0 +1,13 @@
+﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesDealerMapping>
+@{
+    ViewData["Title"] = "Team Dealer Assignments";
+}
+<h2>Team Dealer Assignments</h2>
+<table class="table">
+    <thead><tr><th>UniqueID</th><th>SalespersonId</th><th>DealerId</th></tr></thead>
+    <tbody>
+    @foreach(var m in Model){
+        <tr><td>@m.UniqueID</td><td>@m.salespersonid</td><td>@m.dealerid</td></tr>
+    }
+    </tbody>
+</table>

@@ -1,0 +1,15 @@
+﻿@model IEnumerable<SalesHierarchy.Core.Models.PODStation>
+@{
+    ViewData["Title"] = "POD Stations";
+}
+<h2>POD Stations</h2>
+<p><a asp-action="CreatePODStation" class="btn btn-primary">Create</a></p>
+@if(TempData["Error"] != null){ <div class="text-danger">@TempData["Error"]</div> }
+<table class="table">
+    <thead><tr><th>Name</th><th>OSSPODStationId</th><th></th></tr></thead>
+    <tbody>
+    @foreach(var s in Model){
+        <tr><td>@s.Name</td><td>@s.OSSPODStationId</td><td><a asp-action="EditPODStation" asp-route-id="@s.ID">Edit</a> | <a asp-action="DeletePODStation" asp-route-id="@s.ID">Delete</a></td></tr>
+    }
+    </tbody>
+</table>
