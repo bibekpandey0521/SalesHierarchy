@@ -25,8 +25,8 @@ namespace SalesHierarchy.Infrastructure.Repositories
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
             using var cmd = new SqlCommand(
-                @"INSERT INTO dbo.AuditLog (OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details)
-                  VALUES (@occurred, @email, @action, @entity, @entityId, @summary, @details);", conn);
+                @"INSERT INTO dbo.AuditLog (OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId)
+                  VALUES (@occurred, @email, @action, @entity, @entityId, @summary, @details, @related);", conn);
 
             cmd.Parameters.AddWithValue("@occurred", log.OccurredUtc);
             cmd.Parameters.AddWithValue("@email", (object?)log.UserEmail ?? DBNull.Value);
@@ -35,6 +35,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             cmd.Parameters.AddWithValue("@entityId", (object?)log.EntityId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@summary", (object?)log.Summary ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@details", (object?)log.Details ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@related", (object?)log.RelatedSalesPersonId ?? DBNull.Value);
 
             cmd.ExecuteNonQuery();
         }
@@ -45,7 +46,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
             using var cmd = new SqlCommand(
-                @"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details
+                @"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
                   FROM dbo.AuditLog
                   WHERE (@entity IS NULL OR EntityName = @entity)
                     AND (@action IS NULL OR [Action] = @action)
@@ -75,7 +76,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
             using var cmd = new SqlCommand(
-                @"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details
+                @"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
                   FROM dbo.AuditLog
                   WHERE EntityName = @entity AND EntityId = @entityId
                   ORDER BY OccurredUtc DESC, ID DESC;", conn);
@@ -83,6 +84,65 @@ namespace SalesHierarchy.Infrastructure.Repositories
             cmd.Parameters.AddWithValue("@take", take < 1 ? 1 : take);
             cmd.Parameters.AddWithValue("@entity", entityName);
             cmd.Parameters.AddWithValue("@entityId", entityId);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(Map(reader));
+            }
+
+            return list;
+        }
+
+        public IEnumerable<AuditLog> GetForTeam(IReadOnlyCollection<int> salesPersonIds, IReadOnlyCollection<string> userEmails, int take = 300)
+        {
+            if (salesPersonIds.Count == 0)
+            {
+                return Array.Empty<AuditLog>();
+            }
+
+            var list = new List<AuditLog>();
+            using var conn = (SqlConnection)_factory.CreateConnection();
+            conn.Open();
+
+            var idParameters = new List<string>();
+            var clauses = new List<string>();
+            using var cmd = new SqlCommand { Connection = conn };
+
+            var index = 0;
+            foreach (var id in salesPersonIds.Distinct())
+            {
+                var name = $"@sp{index++}";
+                idParameters.Add(name);
+                cmd.Parameters.AddWithValue(name, id);
+            }
+
+            var idList = string.Join(", ", idParameters);
+            clauses.Add($"RelatedSalesPersonId IN ({idList})");
+            // Legacy rows written before RelatedSalesPersonId existed still belong to a
+            // salesperson when the entity itself is that salesperson.
+            clauses.Add($"([EntityName] = 'SalesPerson' AND TRY_CONVERT(INT, EntityId) IN ({idList}))");
+
+            index = 0;
+            var emailParameters = new List<string>();
+            foreach (var email in userEmails.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var name = $"@email{index++}";
+                emailParameters.Add(name);
+                cmd.Parameters.AddWithValue(name, email);
+            }
+
+            if (emailParameters.Count > 0)
+            {
+                clauses.Add($"UserEmail IN ({string.Join(", ", emailParameters)})");
+            }
+
+            cmd.CommandText =
+                $@"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
+                   FROM dbo.AuditLog
+                   WHERE {string.Join(" OR ", clauses)}
+                   ORDER BY OccurredUtc DESC, ID DESC;";
+            cmd.Parameters.AddWithValue("@take", take < 1 ? 1 : take);
 
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -104,7 +164,10 @@ namespace SalesHierarchy.Infrastructure.Repositories
                 EntityName = reader["EntityName"].ToString() ?? string.Empty,
                 EntityId = reader["EntityId"] as string,
                 Summary = reader["Summary"] as string,
-                Details = reader["Details"] as string
+                Details = reader["Details"] as string,
+                RelatedSalesPersonId = reader["RelatedSalesPersonId"] == DBNull.Value
+                    ? null
+                    : (int)reader["RelatedSalesPersonId"]
             };
         }
     }

@@ -1,0 +1,154 @@
+@model List<SalesHierarchy.Web.ViewModels.UserAccountRow>
+@{
+    ViewData["Title"] = "Team Accounts";
+    var unlinked = ViewBag.Unlinked as List<SalesHierarchy.Core.Models.SalesPerson> ?? new List<SalesHierarchy.Core.Models.SalesPerson>();
+    var isManager = ViewBag.IsManager is true;
+    var pending = Model.Count(u => u.Status == "Invitation pending");
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Team Accounts</h1>
+        <p class="page-subtitle">Login access for your team. Passwords are always set by the salesperson through an invitation.</p>
+    </div>
+    <a asp-action="MyTeam" class="btn btn-ghost">Back to team</a>
+</div>
+
+@if (!isManager)
+{
+    <div class="card-clean">
+        <div class="empty-state">
+            <i class="bi bi-shield-lock"></i>
+            <div class="fw-semibold">No team accounts</div>
+            <div class="text-hint small">A System Administrator assigns reporting lines. Once you have team members, their accounts appear here.</div>
+        </div>
+    </div>
+}
+else
+{
+    @if (pending > 0)
+    {
+        <div class="alert alert-info border-0">
+            <i class="bi bi-envelope me-1"></i>
+            @pending account(s) have not completed password setup yet. Resend an invitation if they did not receive the e-mail.
+        </div>
+    }
+
+    <div class="card-clean">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Team accounts</span>
+            <span class="text-hint small">@Model.Count account(s)</span>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Count == 0)
+            {
+                <div class="empty-state py-4">
+                    <i class="bi bi-shield-lock"></i>
+                    <div class="text-hint small">Nobody in your team has a login account yet.</div>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-clean mb-0">
+                        <thead>
+                            <tr><th>Email</th><th>Salesperson</th><th>Status</th><th class="text-end">Actions</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var row in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="avatar-initials">@(string.IsNullOrWhiteSpace(row.User.Email) ? "?" : row.User.Email.Trim()[..1].ToUpperInvariant())</span>
+                                        <div>
+                                            <div class="fw-medium">@row.User.Email</div>
+                                            <div class="text-hint small mono">@row.User.Id</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="fw-medium">@(row.SalesPersonName ?? "—")</td>
+                                <td>
+                                    @if (row.IsDisabled)
+                                    {
+                                        <span class="badge-soft-danger">Disabled</span>
+                                    }
+                                    else if (row.HasPassword)
+                                    {
+                                        <span class="badge-soft-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-soft-warning">Invitation pending</span>
+                                    }
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <form asp-action="ResendTeamInvitation" method="post" class="d-inline">
+                                        <input type="hidden" name="userId" value="@row.User.Id" />
+                                        <button type="submit" class="btn btn-sm btn-ghost" title="Resend invitation"><i class="bi bi-envelope"></i></button>
+                                    </form>
+                                    @if (row.IsDisabled)
+                                    {
+                                        <form asp-action="EnableTeamAccount" method="post" class="d-inline">
+                                            <input type="hidden" name="userId" value="@row.User.Id" />
+                                            <button type="submit" class="btn btn-sm btn-ghost text-success" title="Enable account"><i class="bi bi-unlock"></i></button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="DisableTeamAccount" method="post" class="d-inline">
+                                            <input type="hidden" name="userId" value="@row.User.Id" />
+                                            <button type="submit" class="btn btn-sm btn-ghost text-danger" title="Disable account"><i class="bi bi-lock"></i></button>
+                                        </form>
+                                    }
+                                    <form asp-action="DeleteTeamAccount" method="post" class="d-inline" onsubmit="return confirm('Delete this login account permanently? The salesperson business record remains.');">
+                                        <input type="hidden" name="userId" value="@row.User.Id" />
+                                        <button type="submit" class="btn btn-sm btn-ghost text-danger" title="Delete account"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card-clean mt-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Team members without a login</span>
+            <span class="badge-soft-neutral">@unlinked.Count</span>
+        </div>
+        <div class="card-body p-0">
+            @if (unlinked.Count == 0)
+            {
+                <div class="empty-state py-4">
+                    <i class="bi bi-check2-circle"></i>
+                    <div class="text-hint small">Everyone in your team has a linked login account.</div>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-clean mb-0">
+                        <thead><tr><th>Name</th><th>Designation</th><th class="text-end"></th></tr></thead>
+                        <tbody>
+                        @foreach (var member in unlinked)
+                        {
+                            <tr>
+                                <td class="fw-medium">@member.Name</td>
+                                <td class="text-hint">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
+                                <td class="text-end">
+                                    <a asp-action="CreateTeamAccount" asp-route-salespersonId="@member.ID" class="btn btn-sm btn-brand">
+                                        <i class="bi bi-envelope-plus me-1"></i>Create login
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}

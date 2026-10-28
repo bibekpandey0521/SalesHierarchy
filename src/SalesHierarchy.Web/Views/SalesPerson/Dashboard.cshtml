@@ -65,11 +65,39 @@ else
                         <div class="text-hint small">Dealers mapped to you</div>
                     </div>
                 </a>
+                <a asp-action="MyTeam" class="quick-link">
+                    <i class="bi bi-people"></i>
+                    <div>
+                        <div class="fw-semibold">Team management</div>
+                        <div class="text-hint small">Add, edit, and manage your reporting line</div>
+                    </div>
+                </a>
+                <a asp-action="TeamAccounts" class="quick-link">
+                    <i class="bi bi-shield-lock"></i>
+                    <div>
+                        <div class="fw-semibold">Team accounts</div>
+                        <div class="text-hint small">Invite, resend, disable, or remove logins</div>
+                    </div>
+                </a>
+                <a asp-action="TeamPODs" class="quick-link">
+                    <i class="bi bi-geo-alt"></i>
+                    <div>
+                        <div class="fw-semibold">Team PODs</div>
+                        <div class="text-hint small">Reassign PODs within your team</div>
+                    </div>
+                </a>
                 <a asp-action="TeamDealerAssignments" class="quick-link">
                     <i class="bi bi-diagram-2"></i>
                     <div>
                         <div class="fw-semibold">Team dealer assignments</div>
                         <div class="text-hint small">Manage dealer mappings within your team</div>
+                    </div>
+                </a>
+                <a asp-action="TeamActivity" class="quick-link">
+                    <i class="bi bi-clock-history"></i>
+                    <div>
+                        <div class="fw-semibold">Team activity</div>
+                        <div class="text-hint small">History for you and your team</div>
                     </div>
                 </a>
                 <a asp-action="ReportingHierarchy" class="quick-link">

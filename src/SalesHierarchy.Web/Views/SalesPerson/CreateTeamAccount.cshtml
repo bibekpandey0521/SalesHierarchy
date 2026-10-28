@@ -1,0 +1,52 @@
+@model SalesHierarchy.Web.ViewModels.CreateTeamAccountViewModel
+@{
+    ViewData["Title"] = "Create team login";
+    var person = ViewBag.Person as SalesHierarchy.Core.Models.SalesPerson;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Create team login</h1>
+        <p class="page-subtitle">The salesperson receives a secure invitation and chooses their own password.</p>
+    </div>
+    <a asp-action="TeamAccounts" class="btn btn-ghost">Back to team accounts</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card-clean form-card">
+            <div class="card-body">
+                <form asp-action="CreateTeamAccount" method="post" novalidate>
+                    <input type="hidden" asp-for="SalesPersonId" />
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger border-0 small" role="alert"></div>
+                    <div class="mb-3">
+                        <label class="form-label">Salesperson</label>
+                        <input class="form-control" value="@(person?.Name ?? "—")@(string.IsNullOrWhiteSpace(person?.Designation) ? "" : $" — {person!.Designation}")" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label"></label>
+                        <input asp-for="Email" class="form-control" autocomplete="off" />
+                        <div class="form-text text-hint">Used as the login name and invitation recipient.</div>
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-brand"><i class="bi bi-send me-1"></i>Create and send invitation</button>
+                        <a asp-action="TeamAccounts" class="btn btn-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card-clean">
+            <div class="card-header">What happens next</div>
+            <div class="card-body">
+                <ul class="check-list mb-0">
+                    <li><i class="bi bi-check2"></i>A SalesPerson login is linked to this existing record.</li>
+                    <li><i class="bi bi-check2"></i>No password is chosen for them — a time-limited token is generated.</li>
+                    <li><i class="bi bi-check2"></i>They receive an e-mail and set their own password.</li>
+                    <li><i class="bi bi-check2"></i>You can resend, disable, enable, or delete the account from Team Accounts.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

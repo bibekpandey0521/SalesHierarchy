@@ -49,16 +49,21 @@
                 }
                 @if (User.IsInRole("SalesPerson"))
                 {
+                    var action = ViewContext.RouteData.Values["Action"]?.ToString();
                     <div class="nav-section">My Workspace</div>
-                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "SalesPerson" ? "active" : "")" asp-controller="SalesPerson" asp-action="Dashboard">
+                    <a class="nav-link @(action == "Dashboard" ? "active" : "")" asp-controller="SalesPerson" asp-action="Dashboard">
                         <i class="bi bi-grid"></i> <span>Dashboard</span>
                     </a>
                     <a class="nav-link" asp-controller="SalesPerson" asp-action="MyProfile"><i class="bi bi-person"></i> <span>My Profile</span></a>
                     <a class="nav-link" asp-controller="SalesPerson" asp-action="MyPODs"><i class="bi bi-geo-alt"></i> <span>My PODs</span></a>
                     <a class="nav-link" asp-controller="SalesPerson" asp-action="MyDealers"><i class="bi bi-shop"></i> <span>My Dealers</span></a>
-                    <a class="nav-link" asp-controller="SalesPerson" asp-action="MyTeam"><i class="bi bi-people"></i> <span>My Team</span></a>
-                    <a class="nav-link" asp-controller="SalesPerson" asp-action="ReportingHierarchy"><i class="bi bi-diagram-3"></i> <span>Hierarchy</span></a>
-                    <a class="nav-link" asp-controller="SalesPerson" asp-action="TeamDealerAssignments"><i class="bi bi-diagram-2"></i> <span>Team Mappings</span></a>
+                    <div class="nav-section">Team</div>
+                    <a class="nav-link @(action == "MyTeam" ? "active" : "")" asp-controller="SalesPerson" asp-action="MyTeam"><i class="bi bi-people"></i> <span>My Team</span></a>
+                    <a class="nav-link @(action == "TeamAccounts" || action == "CreateTeamAccount" ? "active" : "")" asp-controller="SalesPerson" asp-action="TeamAccounts"><i class="bi bi-shield-lock"></i> <span>Team Accounts</span></a>
+                    <a class="nav-link @(action == "TeamPODs" ? "active" : "")" asp-controller="SalesPerson" asp-action="TeamPODs"><i class="bi bi-geo-alt"></i> <span>Team PODs</span></a>
+                    <a class="nav-link @(action == "TeamDealerAssignments" ? "active" : "")" asp-controller="SalesPerson" asp-action="TeamDealerAssignments"><i class="bi bi-diagram-2"></i> <span>Team Mappings</span></a>
+                    <a class="nav-link @(action == "TeamActivity" ? "active" : "")" asp-controller="SalesPerson" asp-action="TeamActivity"><i class="bi bi-clock-history"></i> <span>Team Activity</span></a>
+                    <a class="nav-link @(action == "ReportingHierarchy" ? "active" : "")" asp-controller="SalesPerson" asp-action="ReportingHierarchy"><i class="bi bi-diagram-3"></i> <span>Hierarchy</span></a>
                 }
             </nav>
         </aside>

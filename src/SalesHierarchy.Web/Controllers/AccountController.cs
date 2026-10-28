@@ -113,7 +113,7 @@ namespace SalesHierarchy.Web.Controllers
             var result = await _userManager.ResetPasswordAsync(user, model.Token, model.Password);
             if (result.Succeeded)
             {
-                _audit.Record("PasswordSet", "UserAccount", user.Id, $"Password set for {user.Email} via an invitation or reset link.", new { user.Email }, user.Email);
+                _audit.Record("PasswordSet", "UserAccount", user.Id, $"Password set for {user.Email} via an invitation or reset link.", new { user.Email }, user.Email, user.SalesPersonId);
                 return RedirectToAction("ResetPasswordConfirmation");
             }
             foreach (var error in result.Errors)

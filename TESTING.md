@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- SQL Server or LocalDB with the `SalesProdAuthDb` database (run `database/Setup-LocalDb.ps1`, see README)
+- SQL Server or LocalDB with the `SalesProdAuthDb` database (run `database/Setup-LocalDb.ps1`, see README). The setup script also applies `database/Upgrade-AuditLog.sql` to older databases.
 - .NET 10 SDK
 - Identity tables present (`dotnet ef database update --project src/SalesHierarchy.Web`; Development also applies migrations at startup)
 - E-mail configuration only if you want to exercise real invitation delivery. Locally, the Development settings write messages to `src/SalesHierarchy.Web/App_Data/emails` instead.
@@ -17,10 +17,10 @@ Covered automatically:
 
 | Area | Tests |
 |---|---|
-| Hierarchy rules | self-reporting, direct cycle, deep cycle, valid reassignment, descendants, manager chain, cycle tolerance |
+| Hierarchy rules | self-reporting, direct cycle, deep cycle, valid reassignment, descendants, manager chain, cycle tolerance, subtree scope includes self/descendants and excludes managers/other teams |
 | Bulk row validation | required fields, e-mail formats, max lengths, manager e-mail format, self-reporting, in-file circular managers |
 | Bulk upload status | valid/invalid/duplicate rows, importability, batch counts |
-| Authorization | controller role attributes, POST + anti-forgery on all admin mutations |
+| Authorization | controller role attributes, POST + anti-forgery on all admin and SalesPerson team mutations |
 
 ## Initial System Admin
 
@@ -84,6 +84,9 @@ For each module verify list, details, create, edit, delete confirmation, validat
 - [ ] Bulk import records one `Import` event with imported/skipped/failed counts.
 - [ ] Password hashes, reset tokens, and invitation links never appear in `Details`.
 - [ ] If `dbo.AuditLog` is missing, the admin page shows a warning instead of failing, and normal CRUD still works.
+- [ ] An older database with no `RelatedSalesPersonId` column works after `database/Upgrade-AuditLog.sql` is applied; the upgrade is idempotent.
+- [ ] **Team Activity** shows only the signed-in manager's subtree: their own actions, team members' actions, and admin actions for those people.
+- [ ] Team Activity action and search filters work; another team's events never appear.
 
 ### Excel bulk upload
 
@@ -107,10 +110,33 @@ For each module verify list, details, create, edit, delete confirmation, validat
 - [ ] My PODs shows only PODs assigned to the signed-in salesperson.
 - [ ] My Dealers shows only dealers mapped to that salesperson.
 - [ ] My Team and Reporting Hierarchy include direct and indirect reports only.
-- [ ] Team Dealer Assignments allows adding/removing mappings for self and descendants.
+- [ ] Team Dealer Assignments is read-only for a SalesPerson without reports; a manager can add/remove mappings for self and descendants.
 - [ ] Posting `salespersonId` for a user outside the team is rejected.
+- [ ] A non-manager POSTing a mapping change is rejected.
 - [ ] Removing another team's mapping ID is rejected.
 - [ ] SalesPerson cannot access `/Admin/*`, cannot change their manager, and cannot manage master data.
+- [ ] A SalesPerson without reports sees a read-only workspace: no add-member button, no account actions, no POD reassignment, and read-only dealer mappings.
+- [ ] Posting a team-member, account, POD, or mapping change as a non-manager is rejected.
+
+### Manager team permissions
+
+Set up a manager with at least one direct report as a System Admin, then sign in as the manager.
+
+- [ ] Team navigation shows My Team, Team Accounts, Team PODs, Team Mappings, Team Activity, and Hierarchy.
+- [ ] My Team lists direct and indirect reports, including each member's manager, login status, POD count, and dealer count.
+- [ ] Adding a team member creates the record with the signed-in manager as `ManagerId`; a spoofed `ManagerId` in the POST is ignored.
+- [ ] Editing a team member changes only name/designation; a spoofed `ManagerId` in the POST is ignored.
+- [ ] Editing or deleting yourself, your own manager, or somebody above/outside your subtree returns access denied.
+- [ ] Deleting a member is blocked while they have reports, PODs, dealer mappings, or a linked account, and the dependency message is specific.
+- [ ] After removing those dependencies, deleting the member succeeds.
+- [ ] Team Accounts creates a login only for a member of the manager's own subtree; no password is chosen by the manager.
+- [ ] Resend invitation, disable, enable, and delete account work; a disabled member cannot sign in until re-enabled.
+- [ ] The manager cannot resend/disable/enable/delete their own account or an account outside their subtree.
+- [ ] Team PODs lists only PODs already owned inside the subtree; a POD owned by another team is rejected.
+- [ ] A POD can be reassigned to the manager or any team member, or unassigned; posting an outside salesperson ID is rejected.
+- [ ] Team Accounts and Team Activity show a clear empty state for a non-manager.
+- [ ] Non-managers cannot add/remove dealer mappings; managers can manage mappings for themselves and their subtree.
+- [ ] A System Admin still sees and controls the full hierarchy, all accounts, all PODs, and the full activity log.
 
 ### Security
 

@@ -36,7 +36,7 @@ SalesHierarchy/
 | `POD` | `ID` | Belongs to a `PODStation`, optionally assigned to a salesperson |
 | `Dealer` | `UniqueID` | `Code` is unique |
 | `salesdealermapping` | `UniqueID` | Links a salesperson to a dealer; duplicates blocked in the application |
-| `AuditLog` | `ID` | Append-only history of business/account changes (added by this application) |
+| `AuditLog` | `ID` | Append-only history of business/account changes (added by this application); optional `RelatedSalesPersonId` scopes an event to a team |
 
 No tables are recreated and no indexes/clustering are redesigned. Delete operations are blocked with a clear message while dependent records exist; no cascading deletes were added.
 
@@ -50,6 +50,12 @@ powershell -ExecutionPolicy Bypass -File .\database\Setup-LocalDb.ps1 -SeedDemoD
 
 # Or SQL Server LocalDB
 powershell -ExecutionPolicy Bypass -File .\database\Setup-LocalDb.ps1 -Server "(localdb)\MSSQLLocalDB" -SeedDemoData
+```
+
+The setup script also runs `database/Upgrade-AuditLog.sql`, which safely adds the `RelatedSalesPersonId` column to an existing `dbo.AuditLog`. To upgrade a database created by an older version manually, run:
+
+```powershell
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Upgrade-AuditLog.sql
 ```
 
 Then apply the committed Identity migration and configure the first administrator:
@@ -111,7 +117,7 @@ dotnet user-secrets set "Email:FromAddress" "no-reply@yourcompany.com"
 dotnet user-secrets set "Email:FromName" "SalesHierarchy"
 ```
 
-If e-mail is not configured or delivery fails, the UI reports the invitation as **pending/failed** instead of pretending it was sent. Invitations can be re-sent by an administrator from **User Accounts**. Passwords and tokens are never logged.
+If e-mail is not configured or delivery fails, the UI reports the invitation as **pending/failed** instead of pretending it was sent. Invitations can be re-sent by an administrator from **User Accounts**, or by a manager from **Team Accounts** for their own team. Passwords and tokens are never logged.
 
 #### Invitation flow
 
@@ -171,7 +177,7 @@ Public pages use read-only DTOs (`PublicSalesPersonDto`, `PublicPODStationDto`, 
 
 - Full CRUD for all five business tables (list, details, create, edit, delete confirmation)
 - Search on list pages and database-populated dropdowns
-- Reporting-manager assignment with self-reporting and circular-hierarchy rejection
+- Reporting-manager assignment with self-reporting and circular-hierarchy rejection. This is the only place where a salesperson's manager can be created or changed.
 - Delete guards: subordinates, assigned PODs, dealer mappings, and linked accounts block salesperson deletion; PODs block station deletion; mappings block dealer deletion
 - Individual salesperson account creation (business record + Identity account + invitation in one flow, with compensating rollback)
 - Excel bulk upload with validation, preview, confirmation, result summary, and downloadable results
@@ -181,12 +187,15 @@ Public pages use read-only DTOs (`PublicSalesPersonDto`, `PublicPODStationDto`, 
 
 ### SalesPerson
 
-- Dashboard, profile, reporting chain, and direct reports
-- Assigned PODs and mapped dealers
-- Direct and indirect team members and reporting hierarchy
-- Dealer assignments within their own authorized team (server-side team-scope checks on every request)
+Every SalesPerson has a personal workspace: dashboard, profile, reporting chain, assigned PODs, mapped dealers, and a read-only view of their hierarchy. A SalesPerson who has direct reports also acts as a **manager** for their entire subtree (themselves plus direct and indirect reports). Managers can:
 
-SalesPersons cannot change their manager, manage master data, create accounts, or access another team's data by changing an ID in a URL.
+- Add, edit, and delete team member business records. New members automatically report to the manager who created them.
+- Create a login for a team member, resend the invitation, disable/enable the account, or delete the account while keeping the business record.
+- Reassign PODs **that are already owned within their subtree** to themselves or another team member, or unassign them.
+- Add and remove dealer mappings for themselves and their team.
+- View a team-scoped activity history covering their own actions, their team's actions, and admin actions related to their team.
+
+Managers cannot edit or delete themselves, edit their own manager, change any reporting line, manage their own login from team screens, manage master data, or reach another team's records by changing an ID in a URL. Those actions remain System Admin–only. Non-managers retain a read-only workspace for team members, accounts, PODs, and dealer mappings; an administrator must assign their first report before team management and dealer changes open up.
 
 ## Excel bulk upload
 
@@ -207,10 +216,10 @@ dotnet test SalesHierarchy.slnx
 
 Automated tests cover:
 
-- Hierarchy rules: self-reporting, direct/deep cycles, valid reassignment, descendants, manager chain, cycle tolerance
+- Hierarchy rules: self-reporting, direct/deep cycles, valid reassignment, descendants, manager chain, cycle tolerance, subtree scope
 - Bulk row rules: required fields, e-mail formats, length limits, self-reporting, in-file circular managers
 - Bulk upload status logic
-- Authorization: controller role requirements and POST/anti-forgery protection of admin mutations
+- Authorization: controller role requirements and POST/anti-forgery protection of admin and manager mutations
 
 See [TESTING.md](TESTING.md) for the manual test checklist (public access, authentication, CRUD, delete guards, bulk upload, invitations, team-scope enforcement).
 

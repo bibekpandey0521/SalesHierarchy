@@ -79,4 +79,37 @@ public class AuthorizationTests
             }
         }
     }
+
+    [Fact]
+    public void SalesPersonTeamMutations_ArePostAndAntiForgeryProtected()
+    {
+        var mutations = new[]
+        {
+            nameof(SalesPersonController.CreateTeamMember),
+            nameof(SalesPersonController.EditTeamMember),
+            nameof(SalesPersonController.DeleteTeamMemberConfirmed),
+            nameof(SalesPersonController.CreateTeamAccount),
+            nameof(SalesPersonController.ResendTeamInvitation),
+            nameof(SalesPersonController.DisableTeamAccount),
+            nameof(SalesPersonController.EnableTeamAccount),
+            nameof(SalesPersonController.DeleteTeamAccount),
+            nameof(SalesPersonController.AssignTeamPOD),
+            nameof(SalesPersonController.AddTeamMapping),
+            nameof(SalesPersonController.RemoveTeamMapping)
+        };
+
+        foreach (var name in mutations)
+        {
+            var postActions = typeof(SalesPersonController)
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .Where(m => m.Name == name && m.GetCustomAttribute<HttpPostAttribute>() != null)
+                .ToList();
+
+            Assert.True(postActions.Count > 0, $"{name} should have a POST action.");
+            foreach (var action in postActions)
+            {
+                Assert.NotNull(action.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
+            }
+        }
+    }
 }

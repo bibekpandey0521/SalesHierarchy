@@ -76,7 +76,7 @@ namespace SalesHierarchy.Web.Controllers
             };
             ViewBag.Actions = new[]
             {
-                "Create", "Update", "Delete", "InviteResent", "Disable", "Enable", "Import", "AddMapping", "RemoveMapping", "PasswordSet", "Seed"
+                "Create", "Update", "Delete", "InviteResent", "Disable", "Enable", "Import", "AddMapping", "RemoveMapping", "AssignPOD", "PasswordSet", "Seed"
             };
 
             try
@@ -137,12 +137,12 @@ namespace SalesHierarchy.Web.Controllers
                     "Set your SalesHierarchy password",
                     $"<p>An administrator has re-sent your invitation.</p><p><a href=\"{System.Net.WebUtility.HtmlEncode(callbackUrl)}\">Set my password</a></p>");
                 TempData["SuccessMessage"] = $"Invitation e-mail sent to {user.Email}.";
-                _audit.Record("InviteResent", "UserAccount", user.Id, $"Invitation re-sent to {user.Email}.", new { Outcome = "Sent" });
+                _audit.Record("InviteResent", "UserAccount", user.Id, $"Invitation re-sent to {user.Email}.", new { Outcome = "Sent" }, relatedSalesPersonId: user.SalesPersonId);
             }
             catch
             {
                 TempData["ErrorMessage"] = $"The invitation e-mail could not be sent to {user.Email}. Check the e-mail configuration and try again.";
-                _audit.Record("InviteResent", "UserAccount", user.Id, $"Invitation re-send failed for {user.Email}.", new { Outcome = "Failed" });
+                _audit.Record("InviteResent", "UserAccount", user.Id, $"Invitation re-send failed for {user.Email}.", new { Outcome = "Failed" }, relatedSalesPersonId: user.SalesPersonId);
             }
 
             return RedirectToAction(nameof(UserAccountManagement));
@@ -167,7 +167,7 @@ namespace SalesHierarchy.Web.Controllers
             user.LockoutEnabled = true;
             user.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
             await _userManager.UpdateAsync(user);
-            _audit.Record("Disable", "UserAccount", user.Id, $"Account {user.Email} disabled.");
+            _audit.Record("Disable", "UserAccount", user.Id, $"Account {user.Email} disabled.", relatedSalesPersonId: user.SalesPersonId);
             TempData["SuccessMessage"] = $"Account {user.Email} disabled.";
             return RedirectToAction(nameof(UserAccountManagement));
         }
@@ -184,7 +184,7 @@ namespace SalesHierarchy.Web.Controllers
 
             user.LockoutEnd = null;
             await _userManager.UpdateAsync(user);
-            _audit.Record("Enable", "UserAccount", user.Id, $"Account {user.Email} enabled.");
+            _audit.Record("Enable", "UserAccount", user.Id, $"Account {user.Email} enabled.", relatedSalesPersonId: user.SalesPersonId);
             TempData["SuccessMessage"] = $"Account {user.Email} enabled.";
             return RedirectToAction(nameof(UserAccountManagement));
         }
@@ -213,7 +213,7 @@ namespace SalesHierarchy.Web.Controllers
                 return RedirectToAction(nameof(UserAccountManagement));
             }
 
-            _audit.Record("Delete", "UserAccount", user.Id, $"Account {user.Email} deleted.", new { user.Email, user.SalesPersonId });
+            _audit.Record("Delete", "UserAccount", user.Id, $"Account {user.Email} deleted.", new { user.Email, user.SalesPersonId }, relatedSalesPersonId: personId);
             TempData["SuccessMessage"] = personId.HasValue
                 ? $"Account {user.Email} deleted. The linked salesperson record is now free of account dependencies."
                 : $"Account {user.Email} deleted.";
@@ -427,7 +427,7 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             var personId = _salesPersonRepository.Add(person);
-            _audit.Record("Create", "SalesPerson", personId.ToString(), $"Salesperson '{person.Name}' created.", person);
+            _audit.Record("Create", "SalesPerson", personId.ToString(), $"Salesperson '{person.Name}' created.", person, relatedSalesPersonId: personId);
             TempData["SuccessMessage"] = $"Salesperson '{person.Name}' created. Create a login account to give them access.";
             return RedirectToAction(nameof(SalesPersons));
         }
@@ -481,7 +481,7 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             _salesPersonRepository.Update(person);
-            _audit.Record("Update", "SalesPerson", person.ID.ToString(), $"Salesperson '{person.Name}' updated.", new { Before = existing, After = person });
+            _audit.Record("Update", "SalesPerson", person.ID.ToString(), $"Salesperson '{person.Name}' updated.", new { Before = existing, After = person }, relatedSalesPersonId: person.ID);
             TempData["SuccessMessage"] = $"Salesperson '{person.Name}' updated.";
             return RedirectToAction(nameof(SalesPersons));
         }
@@ -518,7 +518,7 @@ namespace SalesHierarchy.Web.Controllers
             try
             {
                 _salesPersonRepository.Delete(id);
-                _audit.Record("Delete", "SalesPerson", person.ID.ToString(), $"Salesperson '{person.Name}' deleted.", person);
+                _audit.Record("Delete", "SalesPerson", person.ID.ToString(), $"Salesperson '{person.Name}' deleted.", person, relatedSalesPersonId: person.ID);
                 TempData["SuccessMessage"] = $"Salesperson '{person.Name}' deleted.";
             }
             catch
@@ -623,7 +623,7 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             var podId = _podRepository.Add(pod);
-            _audit.Record("Create", "POD", podId.ToString(), $"POD '{pod.Name}' created.", pod);
+            _audit.Record("Create", "POD", podId.ToString(), $"POD '{pod.Name}' created.", pod, relatedSalesPersonId: pod.salespersonId);
             TempData["SuccessMessage"] = $"POD '{pod.Name}' created.";
             return RedirectToAction(nameof(PODs));
         }
@@ -661,7 +661,7 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             _podRepository.Update(pod);
-            _audit.Record("Update", "POD", pod.ID.ToString(), $"POD '{pod.Name}' updated.", new { Before = existingPod, After = pod });
+            _audit.Record("Update", "POD", pod.ID.ToString(), $"POD '{pod.Name}' updated.", new { Before = existingPod, After = pod }, relatedSalesPersonId: pod.salespersonId ?? existingPod.salespersonId);
             TempData["SuccessMessage"] = $"POD '{pod.Name}' updated.";
             return RedirectToAction(nameof(PODs));
         }
@@ -692,7 +692,7 @@ namespace SalesHierarchy.Web.Controllers
             try
             {
                 _podRepository.Delete(id);
-                _audit.Record("Delete", "POD", pod.ID.ToString(), $"POD '{pod.Name}' deleted.", pod);
+                _audit.Record("Delete", "POD", pod.ID.ToString(), $"POD '{pod.Name}' deleted.", pod, relatedSalesPersonId: pod.salespersonId);
                 TempData["SuccessMessage"] = $"POD '{pod.Name}' deleted.";
             }
             catch
@@ -928,7 +928,7 @@ namespace SalesHierarchy.Web.Controllers
 
             var mappingPerson = _salesPersonRepository.GetById(mapping.salespersonid)?.Name ?? mapping.salespersonid.ToString();
             var mappingDealer = _dealerRepository.GetById(mapping.dealerid)?.Name ?? mapping.dealerid.ToString();
-            _audit.Record("Create", "SalesDealerMapping", id.ToString(), $"Dealer mapping created: '{mappingPerson}' to '{mappingDealer}'.", mapping);
+            _audit.Record("Create", "SalesDealerMapping", id.ToString(), $"Dealer mapping created: '{mappingPerson}' to '{mappingDealer}'.", mapping, relatedSalesPersonId: mapping.salespersonid);
             TempData["SuccessMessage"] = "Dealer mapping created.";
             return RedirectToAction(nameof(SalesDealerMappings));
         }
@@ -969,7 +969,7 @@ namespace SalesHierarchy.Web.Controllers
                 return View(mapping);
             }
 
-            _audit.Record("Update", "SalesDealerMapping", mapping.UniqueID.ToString(), "Dealer mapping updated.", new { Before = existingMapping, After = mapping });
+            _audit.Record("Update", "SalesDealerMapping", mapping.UniqueID.ToString(), "Dealer mapping updated.", new { Before = existingMapping, After = mapping }, relatedSalesPersonId: mapping.salespersonid);
             TempData["SuccessMessage"] = "Dealer mapping updated.";
             return RedirectToAction(nameof(SalesDealerMappings));
         }
@@ -1000,7 +1000,7 @@ namespace SalesHierarchy.Web.Controllers
             _mappingRepository.Delete(id);
             var deletedPerson = _salesPersonRepository.GetById(mapping.salespersonid)?.Name ?? mapping.salespersonid.ToString();
             var deletedDealer = _dealerRepository.GetById(mapping.dealerid)?.Name ?? mapping.dealerid.ToString();
-            _audit.Record("Delete", "SalesDealerMapping", mapping.UniqueID.ToString(), $"Dealer mapping deleted: '{deletedPerson}' from '{deletedDealer}'.", mapping);
+            _audit.Record("Delete", "SalesDealerMapping", mapping.UniqueID.ToString(), $"Dealer mapping deleted: '{deletedPerson}' from '{deletedDealer}'.", mapping, relatedSalesPersonId: mapping.salespersonid);
             TempData["SuccessMessage"] = "Dealer mapping deleted.";
             return RedirectToAction(nameof(SalesDealerMappings));
         }
@@ -1114,8 +1114,8 @@ namespace SalesHierarchy.Web.Controllers
                     TempData["SuccessMessage"] = $"Salesperson '{model.Name}' created, but the invitation e-mail could not be sent. Use 'Resend invitation' from User Accounts once e-mail is configured.";
                 }
 
-                _audit.Record("Create", "SalesPerson", personCreatedId.ToString(), $"Salesperson '{model.Name}' created with a login account.", new { model.Name, model.Designation, model.ManagerId });
-                _audit.Record("Create", "UserAccount", user.Id, $"Account {user.Email} created for salesperson '{model.Name}'.", new { user.Email, SalesPersonId = personCreatedId, Invitation = invitationStatus });
+                _audit.Record("Create", "SalesPerson", personCreatedId.ToString(), $"Salesperson '{model.Name}' created with a login account.", new { model.Name, model.Designation, model.ManagerId }, relatedSalesPersonId: personCreatedId);
+                _audit.Record("Create", "UserAccount", user.Id, $"Account {user.Email} created for salesperson '{model.Name}'.", new { user.Email, SalesPersonId = personCreatedId, Invitation = invitationStatus }, relatedSalesPersonId: personCreatedId);
 
                 return RedirectToAction(nameof(SalesPersons));
             }

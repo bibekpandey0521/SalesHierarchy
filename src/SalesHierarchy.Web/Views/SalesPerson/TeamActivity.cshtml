@@ -1,0 +1,73 @@
+@model IEnumerable<SalesHierarchy.Core.Models.AuditLog>
+@{
+    ViewData["Title"] = "Team Activity";
+    var actions = ViewBag.Actions as string[] ?? Array.Empty<string>();
+    var selectedAction = ViewBag.Action as string;
+    var query = ViewBag.Query as string;
+    var isManager = ViewBag.IsManager is true;
+    var teamCount = ViewBag.TeamCount is int count ? count : 0;
+    var logUnavailable = ViewBag.LogUnavailable is true;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Team Activity</h1>
+        <p class="page-subtitle">Read-only history for you and your reporting line. Passwords and invitation tokens are never recorded.</p>
+    </div>
+    <a asp-action="MyTeam" class="btn btn-ghost">Back to team</a>
+</div>
+
+@if (!isManager)
+{
+    <div class="card-clean">
+        <div class="empty-state">
+            <i class="bi bi-clock-history"></i>
+            <div class="fw-semibold">No team activity yet</div>
+            <div class="text-hint small">Team activity is available once a System Administrator assigns reports to you.</div>
+        </div>
+    </div>
+}
+else
+{
+    @if (logUnavailable)
+    {
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            The activity log table is not available yet. Deploy <code>database/SalesHierarchy.Database/Tables/AuditLog.sql</code> to start recording history.
+        </div>
+    }
+
+    <div class="card-clean">
+        <div class="card-header">
+            <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
+                <select name="actionFilter" class="form-select form-select-sm" style="max-width: 180px;">
+                    <option value="">All actions</option>
+                    @foreach (var action in actions)
+                    {
+                        <option value="@action" selected="@(action == selectedAction)">@action</option>
+                    }
+                </select>
+                <input type="search" name="q" value="@query" class="form-control form-control-sm" style="max-width: 280px;" placeholder="Search summary, e-mail, entity, or ID..." />
+                <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search me-1"></i>Filter</button>
+                @if (!string.IsNullOrWhiteSpace(selectedAction) || !string.IsNullOrWhiteSpace(query))
+                {
+                    <a asp-action="TeamActivity" class="btn btn-ghost btn-sm">Clear</a>
+                }
+                <span class="text-hint small ms-auto">@teamCount team member(s) · @Model.Count() event(s)</span>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.Any())
+            {
+                <div class="empty-state">
+                    <i class="bi bi-clock-history"></i>
+                    <div class="fw-semibold">No activity recorded</div>
+                    <div class="text-hint small">Changes to your team, accounts, PODs, and dealer mappings will appear here.</div>
+                </div>
+            }
+            else
+            {
+                <partial name="_AuditLogTable" model="Model" />
+            }
+        </div>
+    </div>
+}

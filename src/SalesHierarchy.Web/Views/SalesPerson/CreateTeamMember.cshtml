@@ -1,0 +1,58 @@
+@model SalesHierarchy.Core.Models.SalesPerson
+@{
+    ViewData["Title"] = "Add team member";
+    var managerName = ViewBag.ManagerName as string;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Add team member</h1>
+        <p class="page-subtitle">Create the business record first. A login account can be created afterwards.</p>
+    </div>
+    <a asp-action="MyTeam" class="btn btn-ghost">Back to team</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card-clean form-card">
+            <div class="card-body">
+                <form asp-action="CreateTeamMember" method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger border-0 small" role="alert"></div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Name" class="form-label"></label>
+                            <input asp-for="Name" class="form-control" autocomplete="off" />
+                            <span asp-validation-for="Name" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Designation" class="form-label"></label>
+                            <input asp-for="Designation" class="form-control" autocomplete="off" />
+                            <span asp-validation-for="Designation" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Reports to</label>
+                            <input class="form-control" value="@managerName" readonly />
+                            <div class="form-text text-hint">New team members join your team. Only a System Administrator can change reporting lines.</div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-brand"><i class="bi bi-plus-lg me-1"></i>Add team member</button>
+                        <a asp-action="MyTeam" class="btn btn-ghost">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card-clean">
+            <div class="card-header">Team management</div>
+            <div class="card-body">
+                <ul class="check-list mb-0">
+                    <li><i class="bi bi-check2"></i>You can add people who report to you, directly or indirectly.</li>
+                    <li><i class="bi bi-check2"></i>You can edit their name and designation.</li>
+                    <li><i class="bi bi-check2"></i>Create a login account to send a password-setup invitation.</li>
+                    <li><i class="bi bi-check2"></i>Changing a person's manager is restricted to System Administrators.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

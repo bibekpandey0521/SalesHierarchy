@@ -64,5 +64,6 @@ namespace SalesHierarchy.Core.Interfaces.Repositories
         void Add(AuditLog log);
         IEnumerable<AuditLog> GetRecent(int take = 200, string? entityName = null, string? action = null, string? search = null);
         IEnumerable<AuditLog> GetForEntity(string entityName, string entityId, int take = 200);
+        IEnumerable<AuditLog> GetForTeam(IReadOnlyCollection<int> salesPersonIds, IReadOnlyCollection<string> userEmails, int take = 300);
     }
 }

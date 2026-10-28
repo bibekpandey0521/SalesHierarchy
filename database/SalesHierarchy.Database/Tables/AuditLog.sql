@@ -7,5 +7,6 @@ CREATE TABLE [dbo].[AuditLog] (
     [EntityId] NVARCHAR(64) NULL,
     [Summary] NVARCHAR(400) NULL,
     [Details] NVARCHAR(MAX) NULL,
+    [RelatedSalesPersonId] INT NULL,
     CONSTRAINT [PK_AuditLog] PRIMARY KEY CLUSTERED ([ID] ASC)
 );

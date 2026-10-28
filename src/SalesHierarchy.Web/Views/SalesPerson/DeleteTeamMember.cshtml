@@ -1,0 +1,48 @@
+@model SalesHierarchy.Core.Models.SalesPerson
+@{
+    ViewData["Title"] = "Delete team member";
+    var dependencies = ViewBag.Dependencies as List<string> ?? new List<string>();
+    var blocked = dependencies.Count > 0;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Delete team member</h1>
+        <p class="page-subtitle">This action cannot be undone.</p>
+    </div>
+    <a asp-action="MyTeam" class="btn btn-ghost">Back to team</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <div class="alert alert-warning border-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            You are about to delete <strong>@Model.Name</strong> from your team.
+        </div>
+
+        @if (blocked)
+        {
+            <div class="alert alert-danger border-0">
+                <div class="fw-semibold mb-1">This record cannot be deleted yet:</div>
+                <ul class="mb-0 small">
+                    @foreach (var dependency in dependencies)
+                    {
+                        <li>@dependency</li>
+                    }
+                </ul>
+            </div>
+            <p class="text-muted small">Remove these dependencies first. Login accounts can be deleted from Team Accounts.</p>
+            <a asp-action="TeamAccounts" class="btn btn-ghost">Open Team Accounts</a>
+        }
+        else
+        {
+            <p class="text-muted">No subordinates, PODs, dealer mappings, or login accounts reference this record.</p>
+            <form asp-action="DeleteTeamMember" method="post">
+                <input type="hidden" name="id" value="@Model.ID" />
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">Delete team member</button>
+                    <a asp-action="MyTeam" class="btn btn-ghost">Cancel</a>
+                </div>
+            </form>
+        }
+    </div>
+</div>

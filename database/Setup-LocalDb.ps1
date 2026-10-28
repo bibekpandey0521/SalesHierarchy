@@ -110,6 +110,12 @@ foreach ($table in $tables) {
     Invoke-SqlFile -Path $file -DatabaseName $Database
 }
 
+$upgradeFile = Join-Path $scriptDir "Upgrade-AuditLog.sql"
+if (Test-Path $upgradeFile) {
+    Write-Host "Applying idempotent schema upgrades..."
+    Invoke-SqlFile -Path $upgradeFile -DatabaseName $Database
+}
+
 if ($SeedDemoData) {
     $seedFile = Join-Path $scriptDir "Seed-DemoData.sql"
     if (-not (Test-Path $seedFile)) {

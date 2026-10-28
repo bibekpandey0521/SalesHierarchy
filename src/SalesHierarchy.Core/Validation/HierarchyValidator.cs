@@ -83,6 +83,17 @@ namespace SalesHierarchy.Core.Validation
         }
 
         /// <summary>
+        /// Returns true when <paramref name="candidateId"/> is the team owner or one of
+        /// their direct/indirect reports. This is the server-side scope check used by
+        /// manager screens; callers must still load the current hierarchy from the database.
+        /// </summary>
+        public static bool IsInSubtree(int rootId, int candidateId, IEnumerable<SalesPerson> allPeople)
+        {
+            return rootId == candidateId
+                || GetDescendants(rootId, allPeople).Any(p => p.ID == candidateId);
+        }
+
+        /// <summary>
         /// Returns the chain of managers above the given salesperson, nearest first.
         /// </summary>
         public static IReadOnlyList<SalesPerson> GetManagerChain(int salesPersonId, IEnumerable<SalesPerson> allPeople)

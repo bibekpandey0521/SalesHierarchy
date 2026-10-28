@@ -64,6 +64,28 @@ public class HierarchyValidatorTests
     }
 
     [Fact]
+    public void SubtreeScope_IncludesSelfAndAllDescendants()
+    {
+        var people = People();
+
+        Assert.True(HierarchyValidator.IsInSubtree(2, 2, people));
+        Assert.True(HierarchyValidator.IsInSubtree(2, 3, people));
+        Assert.True(HierarchyValidator.IsInSubtree(2, 4, people));
+    }
+
+    [Fact]
+    public void SubtreeScope_ExcludesManagersAndOtherTeams()
+    {
+        var people = People();
+        people.Add(new SalesPerson { ID = 5, Name = "Other Manager", ManagerId = 1 });
+        people.Add(new SalesPerson { ID = 6, Name = "Other Team Member", ManagerId = 5 });
+
+        Assert.False(HierarchyValidator.IsInSubtree(2, 1, people));
+        Assert.False(HierarchyValidator.IsInSubtree(2, 5, people));
+        Assert.False(HierarchyValidator.IsInSubtree(2, 6, people));
+    }
+
+    [Fact]
     public void ManagerChain_IsOrderedNearestFirst()
     {
         var chain = HierarchyValidator.GetManagerChain(4, People());

@@ -1,49 +1,113 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
+@using SalesHierarchy.Core.Models
+@using SalesHierarchy.Web.Data
 @{
     ViewData["Title"] = "My Team";
-    var people = ViewBag.People as Dictionary<int, SalesHierarchy.Core.Models.SalesPerson> ?? new Dictionary<int, SalesHierarchy.Core.Models.SalesPerson>();
+    var people = ViewBag.People as Dictionary<int, SalesPerson> ?? new Dictionary<int, SalesPerson>();
+    var accounts = ViewBag.Accounts as Dictionary<int, ApplicationUser> ?? new Dictionary<int, ApplicationUser>();
+    var podCounts = ViewBag.PodCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var mappingCounts = ViewBag.MappingCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var directReportCounts = ViewBag.DirectReportCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var current = ViewBag.Current as SalesPerson;
+    var isManager = ViewBag.IsManager is true;
 }
 <div class="page-head">
     <div>
         <h1 class="page-title">My Team</h1>
-        <p class="page-subtitle">Direct and indirect reports in your reporting line.</p>
+        <p class="page-subtitle">Manage the people in your reporting line. Reporting managers are assigned by a System Administrator.</p>
     </div>
-    <a asp-action="ReportingHierarchy" class="btn btn-ghost">View hierarchy</a>
+    <div class="d-flex flex-wrap gap-2">
+        @if (isManager)
+        {
+            <a asp-action="CreateTeamMember" class="btn btn-brand"><i class="bi bi-person-plus me-1"></i>Add team member</a>
+        }
+        <a asp-action="ReportingHierarchy" class="btn btn-ghost">View hierarchy</a>
+    </div>
 </div>
 
-<div class="card-clean">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Team members</span>
-        <span class="badge-soft-neutral">@Model.Count()</span>
-    </div>
-    <div class="card-body p-0">
-        @if (!Model.Any())
-        {
-            <div class="empty-state">
-                <i class="bi bi-people"></i>
-                <div class="fw-semibold">No team members</div>
-                <div class="text-hint small">Nobody currently reports to you, directly or indirectly.</div>
+@if (current == null)
+{
+    <div class="alert alert-warning border-0">Your account is not linked to a salesperson record, so team management is unavailable.</div>
+}
+else if (!Model.Any())
+{
+    <div class="card-clean">
+        <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <div class="fw-semibold">No team members</div>
+            <div class="text-hint small">
+                @(isManager
+                    ? "Nobody currently reports to you, directly or indirectly."
+                    : "A System Administrator assigns reporting lines. Once someone reports to you, you can manage your team here.")
             </div>
-        }
-        else
-        {
+        </div>
+    </div>
+}
+else
+{
+    <div class="card-clean">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Team members</span>
+            <span class="badge-soft-neutral">@Model.Count()</span>
+        </div>
+        <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-clean mb-0">
-                    <thead><tr><th>Name</th><th>Designation</th><th>Reports to</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th>Reports to</th>
+                            <th>Login</th>
+                            <th class="text-center">PODs</th>
+                            <th class="text-center">Dealers</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
                     <tbody>
                     @foreach (var member in Model)
                     {
                         <tr>
-                            <td class="fw-medium">@member.Name</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="avatar-initials">@(string.IsNullOrWhiteSpace(member.Name) ? "?" : member.Name.Trim()[..1].ToUpperInvariant())</span>
+                                    <div>
+                                        <div class="fw-medium">@member.Name</div>
+                                        @if (directReportCounts.TryGetValue(member.ID, out var directReports) && directReports > 0)
+                                        {
+                                            <div class="text-hint small">@directReports direct report(s)</div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
                             <td class="text-hint">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
                             <td class="text-hint">
                                 @(member.ManagerId.HasValue && people.TryGetValue(member.ManagerId.Value, out var manager) ? manager.Name : "—")
+                            </td>
+                            <td>
+                                @if (accounts.TryGetValue(member.ID, out var account))
+                                {
+                                    <div class="small">@account.Email</div>
+                                    <div class="text-hint small">Linked account</div>
+                                }
+                                else
+                                {
+                                    <a asp-action="CreateTeamAccount" asp-route-salespersonId="@member.ID" class="link-subtle small">
+                                        <i class="bi bi-envelope-plus me-1"></i>Create login
+                                    </a>
+                                }
+                            </td>
+                            <td class="text-center text-hint">@(podCounts.TryGetValue(member.ID, out var pods) ? pods : 0)</td>
+                            <td class="text-center text-hint">@(mappingCounts.TryGetValue(member.ID, out var mappings) ? mappings : 0)</td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="EditTeamMember" asp-route-id="@member.ID" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="DeleteTeamMember" asp-route-id="@member.ID" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
                             </td>
                         </tr>
                     }
                     </tbody>
                 </table>
             </div>
-        }
+        </div>
     </div>
-</div>
+}

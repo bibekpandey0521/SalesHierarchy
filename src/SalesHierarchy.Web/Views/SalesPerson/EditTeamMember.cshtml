@@ -1,0 +1,42 @@
+@model SalesHierarchy.Core.Models.SalesPerson
+@{
+    ViewData["Title"] = "Edit team member";
+    var managerName = ViewBag.ManagerName as string;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Edit team member</h1>
+        <p class="page-subtitle">Update the name or designation. Reporting lines are managed by a System Administrator.</p>
+    </div>
+    <a asp-action="MyTeam" class="btn btn-ghost">Back to team</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <form asp-action="EditTeamMember" method="post" novalidate>
+            <input type="hidden" asp-for="ID" />
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" autocomplete="off" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Designation" class="form-label"></label>
+                    <input asp-for="Designation" class="form-control" autocomplete="off" />
+                    <span asp-validation-for="Designation" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Reports to</label>
+                    <input class="form-control" value="@(string.IsNullOrWhiteSpace(managerName) ? "Top level" : managerName)" readonly />
+                    <div class="form-text text-hint">Only a System Administrator can change this person's manager.</div>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-brand">Save changes</button>
+                <a asp-action="MyTeam" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

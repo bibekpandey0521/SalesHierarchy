@@ -31,7 +31,14 @@ namespace SalesHierarchy.Web.Services
             _logger = logger;
         }
 
-        public void Record(string action, string entityName, string? entityId, string summary, object? details = null, string? actorEmail = null)
+        public void Record(
+            string action,
+            string entityName,
+            string? entityId,
+            string summary,
+            object? details = null,
+            string? actorEmail = null,
+            int? relatedSalesPersonId = null)
         {
             try
             {
@@ -43,7 +50,8 @@ namespace SalesHierarchy.Web.Services
                     EntityName = Trim(entityName, 64)!,
                     EntityId = Trim(entityId, 64),
                     Summary = Trim(summary, 400),
-                    Details = details == null ? null : JsonSerializer.Serialize(details, JsonOptions)
+                    Details = details == null ? null : JsonSerializer.Serialize(details, JsonOptions),
+                    RelatedSalesPersonId = relatedSalesPersonId
                 };
 
                 _repository.Add(log);
