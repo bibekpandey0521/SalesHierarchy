@@ -159,3 +159,12 @@ D:\SalesHierarchy\src\SalesHierarchy.Tests\obj\Debug\net10.0\refint\SalesHierarc
 D:\SalesHierarchy\src\SalesHierarchy.Tests\obj\Debug\net10.0\SalesHierarchy.Tests.pdb
 D:\SalesHierarchy\src\SalesHierarchy.Tests\obj\Debug\net10.0\SalesHierarchy.Tests.genruntimeconfig.cache
 D:\SalesHierarchy\src\SalesHierarchy.Tests\obj\Debug\net10.0\ref\SalesHierarchy.Tests.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\bin\Debug\net10.0\ClosedXML.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\bin\Debug\net10.0\ClosedXML.Parser.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\bin\Debug\net10.0\DocumentFormat.OpenXml.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\bin\Debug\net10.0\DocumentFormat.OpenXml.Framework.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\bin\Debug\net10.0\ExcelNumberFormat.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\bin\Debug\net10.0\RBush.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\bin\Debug\net10.0\SixLabors.Fonts.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\bin\Debug\net10.0\System.IO.Packaging.dll
+D:\SalesHierarchy\src\SalesHierarchy.Tests\obj\Debug\net10.0\SalesHierarchy.Tests.sourcelink.json

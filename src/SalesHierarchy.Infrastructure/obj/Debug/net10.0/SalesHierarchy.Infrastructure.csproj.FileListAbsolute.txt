@@ -13,3 +13,4 @@ D:\SalesHierarchy\src\SalesHierarchy.Infrastructure\obj\Debug\net10.0\SalesHiera
 D:\SalesHierarchy\src\SalesHierarchy.Infrastructure\obj\Debug\net10.0\refint\SalesHierarchy.Infrastructure.dll
 D:\SalesHierarchy\src\SalesHierarchy.Infrastructure\obj\Debug\net10.0\SalesHierarchy.Infrastructure.pdb
 D:\SalesHierarchy\src\SalesHierarchy.Infrastructure\obj\Debug\net10.0\ref\SalesHierarchy.Infrastructure.dll
+D:\SalesHierarchy\src\SalesHierarchy.Infrastructure\obj\Debug\net10.0\SalesHierarchy.Infrastructure.sourcelink.json

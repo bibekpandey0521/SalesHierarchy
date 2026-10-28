@@ -3,4 +3,11 @@
     ViewData["Title"] = "My PODs";
 }
 <h2>My PODs</h2>
-<p>No data or limited to authorized team.</p>
+<table class="table">
+    <thead><tr><th>Name</th><th>OSSPODID</th></tr></thead>
+    <tbody>
+    @foreach(var p in Model){
+        <tr><td>@p.Name</td><td>@p.OSSPODID</td></tr>
+    }
+    </tbody>
+</table>

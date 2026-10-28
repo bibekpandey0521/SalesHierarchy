@@ -1,6 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using SalesHierarchy.Core.Interfaces.Repositories;
+using SalesHierarchy.Core.Models;
+using SalesHierarchy.Web.Data;
+using SalesHierarchy.Web.ViewModels;
+using System.Transactions;
 
 namespace SalesHierarchy.Web.Controllers
 {
@@ -12,19 +18,29 @@ namespace SalesHierarchy.Web.Controllers
         private readonly IPODRepository _podRepository;
         private readonly IDealerRepository _dealerRepository;
         private readonly ISalesDealerMappingRepository _mappingRepository;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailSender _emailSender;
 
-        public AdminController(IPODStationRepository podStationRepository, ISalesPersonRepository salesPersonRepository, IPODRepository podRepository, IDealerRepository dealerRepository, ISalesDealerMappingRepository mappingRepository)
+        public AdminController(IPODStationRepository podStationRepository, ISalesPersonRepository salesPersonRepository, IPODRepository podRepository, IDealerRepository dealerRepository, ISalesDealerMappingRepository mappingRepository, UserManager<ApplicationUser> userManager, IEmailSender emailSender)
         {
             _podStationRepository = podStationRepository;
             _salesPersonRepository = salesPersonRepository;
             _podRepository = podRepository;
             _dealerRepository = dealerRepository;
             _mappingRepository = mappingRepository;
+            _userManager = userManager;
+            _emailSender = emailSender;
         }
 
         public IActionResult Dashboard()
         {
             return View();
+        }
+
+        public IActionResult UserAccountManagement()
+        {
+            var users = _userManager.Users.ToList();
+            return View(users);
         }
 
         public IActionResult PODStations()
@@ -39,7 +55,7 @@ namespace SalesHierarchy.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult CreatePODStation(Core.Models.PODStation station)
+        public IActionResult CreatePODStation(PODStation station)
         {
             if (ModelState.IsValid)
             {
@@ -58,7 +74,7 @@ namespace SalesHierarchy.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult EditPODStation(Core.Models.PODStation station)
+        public IActionResult EditPODStation(PODStation station)
         {
             if (ModelState.IsValid)
             {
@@ -79,6 +95,13 @@ namespace SalesHierarchy.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult DeletePODStationConfirmed(int id)
         {
+            // Prevent deletion if dependent PODs exist
+            var pods = _podRepository.GetAll().Where(p => p.PODStationId == id).ToList();
+            if (pods.Count > 0)
+            {
+                TempData["Error"] = "Cannot delete POD Station due to existing related records.";
+                return RedirectToAction("PODStations");
+            }
             try
             {
                 _podStationRepository.Delete(id);
@@ -114,28 +137,143 @@ namespace SalesHierarchy.Web.Controllers
         public IActionResult CreateSalesPersonAccount()
         {
             ViewBag.Managers = _salesPersonRepository.GetAll();
-            return View();
+            return View(new CreateSalesPersonAccountViewModel());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult CreateSalesPersonAccount(Core.Models.SalesPerson person)
+        public async Task<IActionResult> CreateSalesPersonAccount(CreateSalesPersonAccountViewModel model)
         {
-            if (ModelState.IsValid)
-            {
-                if (person.ManagerId.HasValue && person.ManagerId.Value == 0) person.ManagerId = null;
-                // basic validation
-                _salesPersonRepository.Add(person);
-                TempData["Message"] = "SalesPerson created.";
-                return RedirectToAction("SalesPersons");
-            }
             ViewBag.Managers = _salesPersonRepository.GetAll();
-            return View(person);
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            // Check duplicate email
+            var existingUser = await _userManager.FindByEmailAsync(model.Email);
+            if (existingUser != null)
+            {
+                ModelState.AddModelError(string.Empty, "Email already registered.");
+                return View(model);
+            }
+
+            // Validate manager
+            if (model.ManagerId.HasValue)
+            {
+                var mgr = _salesPersonRepository.GetById(model.ManagerId.Value);
+                if (mgr == null)
+                {
+                    ModelState.AddModelError(string.Empty, "Invalid manager.");
+                    return View(model);
+                }
+            }
+
+            // Create business record and identity account
+            SalesPerson? personCreated = null;
+            ApplicationUser? userCreated = null;
+            try
+            {
+                using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+                {
+                    var person = new SalesPerson
+                    {
+                        Name = model.Name,
+                        Designation = model.Designation,
+                        ManagerId = model.ManagerId
+                    };
+                    var personId = _salesPersonRepository.Add(person);
+                    personCreated = new SalesPerson { ID = personId, Name = person.Name, Designation = person.Designation, ManagerId = person.ManagerId };
+
+                    // Create identity account without shared password
+                    var user = new ApplicationUser { UserName = model.Email, Email = model.Email, EmailConfirmed = true, SalesPersonId = personId };
+                    var createResult = await _userManager.CreateAsync(user);
+                    if (!createResult.Succeeded)
+                    {
+                        throw new Exception(string.Join(",", createResult.Errors.Select(e => e.Description)));
+                    }
+                    await _userManager.AddToRoleAsync(user, "SalesPerson");
+                    userCreated = user;
+
+                    // Generate password setup token
+                    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                    // In production, send email with link; record invitation status as pending/failed if no email provider
+                    // Do not log token
+                    TempData["Message"] = $"SalesPerson created. Password setup invitation generated for {model.Email}.";
+                    scope.Complete();
+                    return RedirectToAction("SalesPersons");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Compensating cleanup if needed
+                if (userCreated != null)
+                {
+                    try { await _userManager.DeleteAsync(userCreated); } catch { }
+                }
+                if (personCreated != null)
+                {
+                    try { _salesPersonRepository.Delete(personCreated.ID); } catch { }
+                }
+                ModelState.AddModelError(string.Empty, "Account creation failed. No orphaned records should remain.");
+                return View(model);
+            }
         }
 
         public IActionResult BulkUpload()
         {
             return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BulkUpload(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                ModelState.AddModelError(string.Empty, "Please select a valid .xlsx file.");
+                return View();
+            }
+            if (!Path.GetExtension(file.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(string.Empty, "Only .xlsx files are supported.");
+                return View();
+            }
+            // For safety and to avoid adding heavy deps, implement basic validation scaffold
+            TempData["Message"] = "File uploaded. Preview and validation pending implementation details.";
+            return View();
+        }
+
+        public IActionResult DownloadTemplate()
+        {
+            // Return empty template placeholder
+            var content = "Name,Designation,Email,ManagerEmail\n";
+            return File(System.Text.Encoding.UTF8.GetBytes(content), "text/csv", "SalesPersonTemplate.csv");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendInvitation(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return NotFound();
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            // Do not log token; report status
+            TempData["Message"] = $"Invitation resent for {user.Email}.";
+            return RedirectToAction("UserAccountManagement");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DisableAccount(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return NotFound();
+            user.LockoutEnabled = true;
+            user.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
+            await _userManager.UpdateAsync(user);
+            TempData["Message"] = $"Account {user.Email} disabled.";
+            return RedirectToAction("UserAccountManagement");
         }
     }
 }

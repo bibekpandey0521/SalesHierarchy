@@ -1,5 +1,14 @@
-﻿@{
+﻿@model SalesHierarchy.Core.Models.SalesPerson
+@{
     ViewData["Title"] = "My Profile";
 }
 <h2>My Profile</h2>
-<p>Profile information will be displayed based on linked SalesPerson record.</p>
+@if(Model == null){
+    <p>No linked SalesPerson record found.</p>
+} else {
+    <dl>
+        <dt>Name</dt><dd>@Model.Name</dd>
+        <dt>Designation</dt><dd>@Model.Designation</dd>
+        <dt>ManagerId</dt><dd>@Model.ManagerId</dd>
+    </dl>
+}

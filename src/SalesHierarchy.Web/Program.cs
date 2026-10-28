@@ -4,6 +4,8 @@ using SalesHierarchy.Infrastructure.Data;
 using SalesHierarchy.Infrastructure.Repositories;
 using SalesHierarchy.Core.Interfaces.Repositories;
 using SalesHierarchy.Web.Data;
+using Microsoft.AspNetCore.Identity.UI.Services;
+using SalesHierarchy.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +22,9 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => {
     options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
+    options.Lockout.AllowedForNewUsers = true;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -35,11 +40,15 @@ builder.Services.AddScoped<ISalesDealerMappingRepository, SalesDealerMappingRepo
 builder.Services.ConfigureApplicationCookie(options => {
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";
+    options.SlidingExpiration = true;
+    options.ExpireTimeSpan = TimeSpan.FromHours(2);
 });
+
+builder.Services.AddTransient<IEmailSender, EmailSender>();
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");

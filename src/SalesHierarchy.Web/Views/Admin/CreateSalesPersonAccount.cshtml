@@ -1,10 +1,11 @@
-﻿@model SalesHierarchy.Core.Models.SalesPerson
+﻿@model SalesHierarchy.Web.ViewModels.CreateSalesPersonAccountViewModel
 @{
     ViewData["Title"] = "Create SalesPerson Account";
     var managers = ViewBag.Managers as IEnumerable<SalesHierarchy.Core.Models.SalesPerson>;
 }
-<h2>Create SalesPerson (Individual)</h2>
+<h2>Create SalesPerson Account (Individual)</h2>
 <form asp-action="CreateSalesPersonAccount" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
     <div class="form-group">
         <label asp-for="Name"></label>
         <input asp-for="Name" class="form-control" />
@@ -13,6 +14,12 @@
     <div class="form-group">
         <label asp-for="Designation"></label>
         <input asp-for="Designation" class="form-control" />
+        <span asp-validation-for="Designation" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Email"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
     </div>
     <div class="form-group">
         <label asp-for="ManagerId">Reporting Manager</label>
@@ -20,10 +27,10 @@
             <option value="">None</option>
             @if(managers != null){
                 foreach(var m in managers){
-                    <option value="@m.ID">@m.Name</option>
+                    <option value="@m.ID">@m.Name (@m.Designation)</option>
                 }
             }
         </select>
     </div>
-    <button type="submit" class="btn btn-primary">Create</button>
+    <button type="submit" class="btn btn-primary">Create & Send Invitation</button>
 </form>

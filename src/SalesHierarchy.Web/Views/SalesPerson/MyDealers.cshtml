@@ -3,3 +3,11 @@
     ViewData["Title"] = "My Dealers";
 }
 <h2>My Dealers</h2>
+<table class="table">
+    <thead><tr><th>Name</th><th>Code</th></tr></thead>
+    <tbody>
+    @foreach(var d in Model){
+        <tr><td>@d.Name</td><td>@d.Code</td></tr>
+    }
+    </tbody>
+</table>

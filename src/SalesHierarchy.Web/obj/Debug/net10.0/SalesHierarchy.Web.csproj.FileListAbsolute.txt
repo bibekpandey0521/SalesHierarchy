@@ -214,3 +214,12 @@ D:\SalesHierarchy\src\SalesHierarchy.Web\obj\Debug\net10.0\refint\SalesHierarchy
 D:\SalesHierarchy\src\SalesHierarchy.Web\obj\Debug\net10.0\SalesHierarchy.Web.pdb
 D:\SalesHierarchy\src\SalesHierarchy.Web\obj\Debug\net10.0\SalesHierarchy.Web.genruntimeconfig.cache
 D:\SalesHierarchy\src\SalesHierarchy.Web\obj\Debug\net10.0\ref\SalesHierarchy.Web.dll
+D:\SalesHierarchy\src\SalesHierarchy.Web\obj\Debug\net10.0\SalesHierarchy.Web.sourcelink.json
+D:\SalesHierarchy\src\SalesHierarchy.Web\bin\Debug\net10.0\ClosedXML.dll
+D:\SalesHierarchy\src\SalesHierarchy.Web\bin\Debug\net10.0\ClosedXML.Parser.dll
+D:\SalesHierarchy\src\SalesHierarchy.Web\bin\Debug\net10.0\DocumentFormat.OpenXml.dll
+D:\SalesHierarchy\src\SalesHierarchy.Web\bin\Debug\net10.0\DocumentFormat.OpenXml.Framework.dll
+D:\SalesHierarchy\src\SalesHierarchy.Web\bin\Debug\net10.0\ExcelNumberFormat.dll
+D:\SalesHierarchy\src\SalesHierarchy.Web\bin\Debug\net10.0\RBush.dll
+D:\SalesHierarchy\src\SalesHierarchy.Web\bin\Debug\net10.0\SixLabors.Fonts.dll
+D:\SalesHierarchy\src\SalesHierarchy.Web\bin\Debug\net10.0\System.IO.Packaging.dll

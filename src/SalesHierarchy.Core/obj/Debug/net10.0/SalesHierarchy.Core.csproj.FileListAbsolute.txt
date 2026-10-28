@@ -9,3 +9,4 @@ D:\SalesHierarchy\src\SalesHierarchy.Core\obj\Debug\net10.0\SalesHierarchy.Core.
 D:\SalesHierarchy\src\SalesHierarchy.Core\obj\Debug\net10.0\refint\SalesHierarchy.Core.dll
 D:\SalesHierarchy\src\SalesHierarchy.Core\obj\Debug\net10.0\SalesHierarchy.Core.pdb
 D:\SalesHierarchy\src\SalesHierarchy.Core\obj\Debug\net10.0\ref\SalesHierarchy.Core.dll
+D:\SalesHierarchy\src\SalesHierarchy.Core\obj\Debug\net10.0\SalesHierarchy.Core.sourcelink.json
