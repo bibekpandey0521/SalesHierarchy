@@ -1,4 +1,25 @@
-﻿<!DOCTYPE html>
+﻿@{
+    var controller = ViewContext.RouteData.Values["Controller"]?.ToString() ?? string.Empty;
+    var action = ViewContext.RouteData.Values["Action"]?.ToString() ?? string.Empty;
+    var section = controller switch
+    {
+        "Home" => "Overview",
+        "Public" => "Public directory",
+        "Admin" => "Administration",
+        "SalesPerson" => "My workspace",
+        "Account" => "Account",
+        _ => "Workspace"
+    };
+
+    string NavClass(string controllerName, params string[] actions)
+    {
+        return controller == controllerName &&
+               (actions.Length == 0 || Array.IndexOf(actions, action) >= 0)
+            ? "active"
+            : string.Empty;
+    }
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -11,7 +32,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
+<body class="@(User.Identity?.IsAuthenticated == true ? "app-body" : "guest-body")">
 @if (User.Identity?.IsAuthenticated == true)
 {
     <div class="app-shell">
@@ -23,57 +44,62 @@
                     <div class="text-hint small">Enterprise Sales</div>
                 </div>
             </a>
+            <button class="sidebar-close d-lg-none" type="button" data-sidebar-close aria-label="Close navigation">
+                <i class="bi bi-x-lg"></i>
+            </button>
             <nav class="flex-grow-1 px-2">
                 <div class="nav-section">Overview</div>
-                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" ? "active" : "")" asp-controller="Home" asp-action="Index">
+                <a class="nav-link @NavClass("Home", "Index")" asp-controller="Home" asp-action="Index">
                     <i class="bi bi-house"></i> <span>Home</span>
                 </a>
-                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Public" ? "active" : "")" asp-controller="Public" asp-action="Index">
+                <a class="nav-link @NavClass("Public")" asp-controller="Public" asp-action="Index">
                     <i class="bi bi-globe2"></i> <span>Public Directory</span>
                 </a>
                 @if (User.IsInRole("SystemAdmin"))
                 {
                     <div class="nav-section">Administration</div>
-                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Dashboard">
+                    <a class="nav-link @NavClass("Admin", "Dashboard")" asp-controller="Admin" asp-action="Dashboard">
                         <i class="bi bi-speedometer2"></i> <span>Admin Dashboard</span>
                     </a>
-                    <a class="nav-link" asp-controller="Admin" asp-action="PODStations"><i class="bi bi-building"></i> <span>POD Stations</span></a>
-                    <a class="nav-link" asp-controller="Admin" asp-action="PODs"><i class="bi bi-geo-alt"></i> <span>PODs</span></a>
-                    <a class="nav-link" asp-controller="Admin" asp-action="SalesPersons"><i class="bi bi-people"></i> <span>Sales Persons</span></a>
-                    <a class="nav-link" asp-controller="Admin" asp-action="Dealers"><i class="bi bi-shop"></i> <span>Dealers</span></a>
-                    <a class="nav-link" asp-controller="Admin" asp-action="SalesDealerMappings"><i class="bi bi-diagram-2"></i> <span>Mappings</span></a>
-                    <a class="nav-link" asp-controller="Admin" asp-action="CreateSalesPersonAccount"><i class="bi bi-person-plus"></i> <span>Create Account</span></a>
-                    <a class="nav-link" asp-controller="Admin" asp-action="BulkUpload"><i class="bi bi-file-earmark-spreadsheet"></i> <span>Bulk Upload</span></a>
-                    <a class="nav-link" asp-controller="Admin" asp-action="UserAccountManagement"><i class="bi bi-shield-lock"></i> <span>User Accounts</span></a>
-                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "AuditLog" ? "active" : "")" asp-controller="Admin" asp-action="AuditLog"><i class="bi bi-clock-history"></i> <span>Activity Log</span></a>
+                    <a class="nav-link @NavClass("Admin", "PODStations", "DetailsPODStation", "CreatePODStation", "EditPODStation", "DeletePODStation", "DeletePODStationConfirmed")" asp-controller="Admin" asp-action="PODStations"><i class="bi bi-building"></i> <span>POD Stations</span></a>
+                    <a class="nav-link @NavClass("Admin", "PODs", "DetailsPOD", "CreatePOD", "EditPOD", "DeletePOD", "DeletePODConfirmed")" asp-controller="Admin" asp-action="PODs"><i class="bi bi-geo-alt"></i> <span>PODs</span></a>
+                    <a class="nav-link @NavClass("Admin", "SalesPersons", "DetailsSalesPerson", "CreateSalesPerson", "EditSalesPerson", "DeleteSalesPerson", "DeleteSalesPersonConfirmed")" asp-controller="Admin" asp-action="SalesPersons"><i class="bi bi-people"></i> <span>Sales Persons</span></a>
+                    <a class="nav-link @NavClass("Admin", "Dealers", "DetailsDealer", "CreateDealer", "EditDealer", "DeleteDealer", "DeleteDealerConfirmed")" asp-controller="Admin" asp-action="Dealers"><i class="bi bi-shop"></i> <span>Dealers</span></a>
+                    <a class="nav-link @NavClass("Admin", "SalesDealerMappings", "DetailsSalesDealerMapping", "CreateSalesDealerMapping", "EditSalesDealerMapping", "DeleteSalesDealerMapping", "DeleteSalesDealerMappingConfirmed")" asp-controller="Admin" asp-action="SalesDealerMappings"><i class="bi bi-diagram-2"></i> <span>Mappings</span></a>
+                    <a class="nav-link @NavClass("Admin", "CreateSalesPersonAccount")" asp-controller="Admin" asp-action="CreateSalesPersonAccount"><i class="bi bi-person-plus"></i> <span>Create Account</span></a>
+                    <a class="nav-link @NavClass("Admin", "BulkUpload", "BulkPreview", "ConfirmBulkUpload", "BulkResult", "DownloadErrorReport", "DownloadTemplate")" asp-controller="Admin" asp-action="BulkUpload"><i class="bi bi-file-earmark-spreadsheet"></i> <span>Bulk Upload</span></a>
+                    <a class="nav-link @NavClass("Admin", "UserAccountManagement", "ResendInvitation", "DisableAccount", "EnableAccount", "DeleteAccount")" asp-controller="Admin" asp-action="UserAccountManagement"><i class="bi bi-shield-lock"></i> <span>User Accounts</span></a>
+                    <a class="nav-link @NavClass("Admin", "AuditLog")" asp-controller="Admin" asp-action="AuditLog"><i class="bi bi-clock-history"></i> <span>Activity Log</span></a>
                 }
                 @if (User.IsInRole("SalesPerson"))
                 {
-                    var action = ViewContext.RouteData.Values["Action"]?.ToString();
                     <div class="nav-section">My Workspace</div>
-                    <a class="nav-link @(action == "Dashboard" ? "active" : "")" asp-controller="SalesPerson" asp-action="Dashboard">
+                    <a class="nav-link @NavClass("SalesPerson", "Dashboard")" asp-controller="SalesPerson" asp-action="Dashboard">
                         <i class="bi bi-grid"></i> <span>Dashboard</span>
                     </a>
-                    <a class="nav-link" asp-controller="SalesPerson" asp-action="MyProfile"><i class="bi bi-person"></i> <span>My Profile</span></a>
-                    <a class="nav-link" asp-controller="SalesPerson" asp-action="MyPODs"><i class="bi bi-geo-alt"></i> <span>My PODs</span></a>
-                    <a class="nav-link" asp-controller="SalesPerson" asp-action="MyDealers"><i class="bi bi-shop"></i> <span>My Dealers</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "MyProfile")" asp-controller="SalesPerson" asp-action="MyProfile"><i class="bi bi-person"></i> <span>My Profile</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "MyPODs")" asp-controller="SalesPerson" asp-action="MyPODs"><i class="bi bi-geo-alt"></i> <span>My PODs</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "MyDealers")" asp-controller="SalesPerson" asp-action="MyDealers"><i class="bi bi-shop"></i> <span>My Dealers</span></a>
                     <div class="nav-section">Team</div>
-                    <a class="nav-link @(action == "MyTeam" ? "active" : "")" asp-controller="SalesPerson" asp-action="MyTeam"><i class="bi bi-people"></i> <span>My Team</span></a>
-                    <a class="nav-link @(action == "TeamAccounts" || action == "CreateTeamAccount" ? "active" : "")" asp-controller="SalesPerson" asp-action="TeamAccounts"><i class="bi bi-shield-lock"></i> <span>Team Accounts</span></a>
-                    <a class="nav-link @(action == "TeamPODs" ? "active" : "")" asp-controller="SalesPerson" asp-action="TeamPODs"><i class="bi bi-geo-alt"></i> <span>Team PODs</span></a>
-                    <a class="nav-link @(action == "TeamDealerAssignments" ? "active" : "")" asp-controller="SalesPerson" asp-action="TeamDealerAssignments"><i class="bi bi-diagram-2"></i> <span>Team Mappings</span></a>
-                    <a class="nav-link @(action == "TeamActivity" ? "active" : "")" asp-controller="SalesPerson" asp-action="TeamActivity"><i class="bi bi-clock-history"></i> <span>Team Activity</span></a>
-                    <a class="nav-link @(action == "ReportingHierarchy" ? "active" : "")" asp-controller="SalesPerson" asp-action="ReportingHierarchy"><i class="bi bi-diagram-3"></i> <span>Hierarchy</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "MyTeam", "CreateTeamMember", "EditTeamMember", "DeleteTeamMember", "DeleteTeamMemberConfirmed")" asp-controller="SalesPerson" asp-action="MyTeam"><i class="bi bi-people"></i> <span>My Team</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "TeamAccounts", "CreateTeamAccount", "ResendTeamInvitation", "DisableTeamAccount", "EnableTeamAccount", "DeleteTeamAccount")" asp-controller="SalesPerson" asp-action="TeamAccounts"><i class="bi bi-shield-lock"></i> <span>Team Accounts</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "TeamPODs", "AssignTeamPOD")" asp-controller="SalesPerson" asp-action="TeamPODs"><i class="bi bi-geo-alt"></i> <span>Team PODs</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "TeamDealerAssignments", "AddTeamMapping", "RemoveTeamMapping")" asp-controller="SalesPerson" asp-action="TeamDealerAssignments"><i class="bi bi-diagram-2"></i> <span>Team Mappings</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "TeamActivity")" asp-controller="SalesPerson" asp-action="TeamActivity"><i class="bi bi-clock-history"></i> <span>Team Activity</span></a>
+                    <a class="nav-link @NavClass("SalesPerson", "ReportingHierarchy")" asp-controller="SalesPerson" asp-action="ReportingHierarchy"><i class="bi bi-diagram-3"></i> <span>Hierarchy</span></a>
                 }
             </nav>
         </aside>
+        <div class="sidebar-backdrop" id="sidebarBackdrop" data-sidebar-close></div>
         <div class="app-main">
             <header class="app-header">
-                <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-ghost d-lg-none" type="button" onclick="document.getElementById('appSidebar').classList.toggle('show')"><i class="bi bi-list"></i></button>
-                    <div>
-                        <div class="fw-semibold">@ViewData["Title"]</div>
-                        <div class="text-hint small">SalesHierarchy Management</div>
+                <div class="app-header-left d-flex align-items-center gap-2">
+                    <button class="btn btn-ghost btn-sm d-lg-none" type="button" data-sidebar-open aria-label="Open navigation" aria-controls="appSidebar" aria-expanded="false">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="app-header-copy">
+                        <div class="app-header-eyebrow">@(section)</div>
+                        <div class="app-header-title">@ViewData["Title"]</div>
                     </div>
                 </div>
                 <partial name="_LoginPartial" />
@@ -105,14 +131,15 @@ else
                     <div class="brand-mark"><i class="bi bi-diagram-3"></i></div>
                     <span class="fw-semibold">SalesHierarchy</span>
                 </a>
-                <div class="ms-auto">
-                    <a class="btn btn-brand" asp-controller="Account" asp-action="Login"><i class="bi bi-box-arrow-in-right me-1"></i> Login</a>
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <a class="btn btn-ghost btn-sm d-none d-sm-inline-flex" asp-controller="Public" asp-action="Index"><i class="bi bi-globe2 me-1"></i>Directory</a>
+                    <a class="btn btn-brand btn-sm" asp-controller="Account" asp-action="Login"><i class="bi bi-box-arrow-in-right me-1"></i>Login</a>
                 </div>
             </div>
         </nav>
     </header>
     <main>
-        <div class="container py-4">
+        <div class="container py-4 py-lg-5">
             @if (TempData["Message"] != null)
             {
                 <div class="alert alert-info border-0 shadow-sm">@TempData["Message"]</div>
@@ -120,6 +147,12 @@ else
             @RenderBody()
         </div>
     </main>
+    <footer class="guest-footer">
+        <div class="container d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <span>&copy; @DateTime.Now.Year SalesHierarchy</span>
+            <span>Approved public information only</span>
+        </div>
+    </footer>
 }
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

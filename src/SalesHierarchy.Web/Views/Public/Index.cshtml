@@ -1,44 +1,57 @@
 ﻿@{
     ViewData["Title"] = "Public Directory";
 }
-<div class="page-head">
-    <div>
-        <h1 class="page-title">Public Directory</h1>
-        <p class="page-subtitle">Read-only, approved information about the sales organization. No sign-in required.</p>
-    </div>
-</div>
+<div class="public-page">
+    <section class="public-hero">
+        <div>
+            <span class="public-eyebrow"><i class="bi bi-globe2"></i> Public directory</span>
+            <h1>Explore the sales organization.</h1>
+            <p>Read-only, approved information about the sales organization. No sign-in required, and no internal account data is ever published.</p>
+            <div class="public-hero-actions">
+                <a class="btn btn-brand" asp-action="SalesHierarchy"><i class="bi bi-diagram-3 me-1"></i>Browse hierarchy</a>
+                <a class="btn btn-ghost" asp-action="PODs"><i class="bi bi-geo-alt me-1"></i>View PODs</a>
+            </div>
+        </div>
+        <div class="public-hero-panel">
+            <div class="public-hero-panel-title">Directory at a glance</div>
+            <a class="public-stat-row" asp-action="SalesHierarchy">
+                <span class="public-stat-label">Salespersons</span>
+                <span class="public-stat-value">@ViewBag.SalesPersonCount<i class="bi bi-arrow-up-right"></i></span>
+            </a>
+            <a class="public-stat-row" asp-action="PODStations">
+                <span class="public-stat-label">POD stations</span>
+                <span class="public-stat-value">@ViewBag.PODStationCount<i class="bi bi-arrow-up-right"></i></span>
+            </a>
+            <a class="public-stat-row" asp-action="PODs">
+                <span class="public-stat-label">PODs</span>
+                <span class="public-stat-value">@ViewBag.PODCount<i class="bi bi-arrow-up-right"></i></span>
+            </a>
+        </div>
+    </section>
 
-<div class="row g-3">
-    <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-label">Salespersons</div>
-            <div class="stat-value">@ViewBag.SalesPersonCount</div>
-            <a asp-action="SalesHierarchy" class="stat-link">View hierarchy <i class="bi bi-arrow-right"></i></a>
+    <div class="row g-3 mt-1">
+        <div class="col-lg-7">
+            <div class="card-clean h-100">
+                <div class="card-header">What is published here</div>
+                <div class="card-body">
+                    <p class="public-section-subtitle">Only approved directory fields are exposed on public pages.</p>
+                    <ul class="check-list mb-0">
+                        <li><i class="bi bi-check2"></i>Approved salesperson names, designations, and reporting lines.</li>
+                        <li><i class="bi bi-check2"></i>Approved POD station and POD names.</li>
+                        <li><i class="bi bi-x-circle"></i>Emails, dealer mappings, account details, and all internal data stay private.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-label">POD stations</div>
-            <div class="stat-value">@ViewBag.PODStationCount</div>
-            <a asp-action="PODStations" class="stat-link">View stations <i class="bi bi-arrow-right"></i></a>
+        <div class="col-lg-5">
+            <div class="card-clean h-100">
+                <div class="card-body">
+                    <i class="bi bi-shield-check feature-icon"></i>
+                    <div class="fw-semibold mt-3">Private by design</div>
+                    <p class="text-muted small mb-3">Public pages are built from approved DTOs only. Account, mapping, and authentication details never leave the internal workspace.</p>
+                    <a class="link-subtle small" asp-controller="Account" asp-action="Login">Staff sign in <i class="bi bi-arrow-right ms-1"></i></a>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="stat-card">
-            <div class="stat-label">PODs</div>
-            <div class="stat-value">@ViewBag.PODCount</div>
-            <a asp-action="PODs" class="stat-link">View PODs <i class="bi bi-arrow-right"></i></a>
-        </div>
-    </div>
-</div>
-
-<div class="card-clean mt-3">
-    <div class="card-header">What is published here</div>
-    <div class="card-body">
-        <ul class="check-list mb-0">
-            <li><i class="bi bi-check2"></i>Approved salesperson names, designations, and reporting lines.</li>
-            <li><i class="bi bi-check2"></i>Approved POD station and POD names.</li>
-            <li><i class="bi bi-x-circle text-muted"></i>Emails, dealer mappings, account details, and all internal data stay private.</li>
-        </ul>
     </div>
 </div>

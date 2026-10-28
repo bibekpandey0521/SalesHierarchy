@@ -1,6 +1,6 @@
-﻿@{ Layout = "_AuthLayout"; ViewData["Title"] = "Sign In"; }
+﻿@{ Layout = "_AuthLayout"; ViewData["Title"] = "Sign In"; ViewData["AuthSubtitle"] = "Use your company account to continue."; }
 @model SalesHierarchy.Web.ViewModels.LoginViewModel
-<form asp-action="Login" method="post" class="mt-2">
+<form asp-action="Login" method="post" class="mt-1">
     <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
     <div class="mb-3">
         <label asp-for="Email" class="form-label label-muted">Email address</label>
