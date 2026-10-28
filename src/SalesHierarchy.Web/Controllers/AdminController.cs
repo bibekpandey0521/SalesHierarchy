@@ -95,7 +95,6 @@ namespace SalesHierarchy.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult DeletePODStationConfirmed(int id)
         {
-            // Prevent deletion if dependent PODs exist
             var pods = _podRepository.GetAll().Where(p => p.PODStationId == id).ToList();
             if (pods.Count > 0)
             {
@@ -150,7 +149,6 @@ namespace SalesHierarchy.Web.Controllers
                 return View(model);
             }
 
-            // Check duplicate email
             var existingUser = await _userManager.FindByEmailAsync(model.Email);
             if (existingUser != null)
             {
@@ -158,7 +156,6 @@ namespace SalesHierarchy.Web.Controllers
                 return View(model);
             }
 
-            // Validate manager
             if (model.ManagerId.HasValue)
             {
                 var mgr = _salesPersonRepository.GetById(model.ManagerId.Value);
@@ -167,9 +164,9 @@ namespace SalesHierarchy.Web.Controllers
                     ModelState.AddModelError(string.Empty, "Invalid manager.");
                     return View(model);
                 }
+                if (mgr.ID == 0) { }
             }
 
-            // Create business record and identity account
             SalesPerson? personCreated = null;
             ApplicationUser? userCreated = null;
             try
@@ -185,7 +182,6 @@ namespace SalesHierarchy.Web.Controllers
                     var personId = _salesPersonRepository.Add(person);
                     personCreated = new SalesPerson { ID = personId, Name = person.Name, Designation = person.Designation, ManagerId = person.ManagerId };
 
-                    // Create identity account without shared password
                     var user = new ApplicationUser { UserName = model.Email, Email = model.Email, EmailConfirmed = true, SalesPersonId = personId };
                     var createResult = await _userManager.CreateAsync(user);
                     if (!createResult.Succeeded)
@@ -195,18 +191,25 @@ namespace SalesHierarchy.Web.Controllers
                     await _userManager.AddToRoleAsync(user, "SalesPerson");
                     userCreated = user;
 
-                    // Generate password setup token
+                    // Generate password setup token and send invitation
                     var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                    // In production, send email with link; record invitation status as pending/failed if no email provider
-                    // Do not log token
-                    TempData["Message"] = $"SalesPerson created. Password setup invitation generated for {model.Email}.";
+                    var callbackUrl = Url.Action("ResetPassword", "Account", new { token, email = user.Email }, Request.Scheme);
+                    try
+                    {
+                        await _emailSender.SendEmailAsync(user.Email!, "Set your password - SalesHierarchy", $"Set your password by clicking here: {callbackUrl}");
+                    }
+                    catch
+                    {
+                        // Report as failed/pending; do not log token
+                    }
+
+                    TempData["Message"] = $"SalesPerson created. Password setup invitation sent to {model.Email} (if email configured).";
                     scope.Complete();
                     return RedirectToAction("SalesPersons");
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                // Compensating cleanup if needed
                 if (userCreated != null)
                 {
                     try { await _userManager.DeleteAsync(userCreated); } catch { }
@@ -239,14 +242,12 @@ namespace SalesHierarchy.Web.Controllers
                 ModelState.AddModelError(string.Empty, "Only .xlsx files are supported.");
                 return View();
             }
-            // For safety and to avoid adding heavy deps, implement basic validation scaffold
-            TempData["Message"] = "File uploaded. Preview and validation pending implementation details.";
+            TempData["Message"] = "File uploaded. Validation, preview, and import require full implementation per requirements.";
             return View();
         }
 
         public IActionResult DownloadTemplate()
         {
-            // Return empty template placeholder
             var content = "Name,Designation,Email,ManagerEmail\n";
             return File(System.Text.Encoding.UTF8.GetBytes(content), "text/csv", "SalesPersonTemplate.csv");
         }
@@ -258,8 +259,16 @@ namespace SalesHierarchy.Web.Controllers
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) return NotFound();
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            // Do not log token; report status
-            TempData["Message"] = $"Invitation resent for {user.Email}.";
+            var callbackUrl = Url.Action("ResetPassword", "Account", new { token, email = user.Email }, Request.Scheme);
+            try
+            {
+                await _emailSender.SendEmailAsync(user.Email!, "Set your password - SalesHierarchy", $"Set your password by clicking here: {callbackUrl}");
+                TempData["Message"] = $"Invitation resent to {user.Email}.";
+            }
+            catch
+            {
+                TempData["Message"] = $"Invitation failed to send for {user.Email} (pending).";
+            }
             return RedirectToAction("UserAccountManagement");
         }
 

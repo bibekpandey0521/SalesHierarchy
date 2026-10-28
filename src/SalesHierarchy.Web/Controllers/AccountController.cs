@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using SalesHierarchy.Web.Data;
 using SalesHierarchy.Web.ViewModels;
@@ -9,11 +10,13 @@ namespace SalesHierarchy.Web.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IEmailSender _emailSender;
 
-        public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IEmailSender emailSender)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _emailSender = emailSender;
         }
 
         [HttpGet]
@@ -67,7 +70,15 @@ namespace SalesHierarchy.Web.Controllers
                     return View("ForgotPasswordConfirmation");
                 }
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                // In production, send email; for now show confirmation
+                var callbackUrl = Url.Action("ResetPassword", "Account", new { token, email = user.Email }, Request.Scheme);
+                try
+                {
+                    await _emailSender.SendEmailAsync(user.Email!, "Reset Password", $"Please reset your password by clicking here: {callbackUrl}");
+                }
+                catch
+                {
+                    // Do not reveal failure details; report generically
+                }
                 return View("ForgotPasswordConfirmation");
             }
             return View(model);
@@ -76,7 +87,7 @@ namespace SalesHierarchy.Web.Controllers
         [HttpGet]
         public IActionResult ResetPassword(string token = "", string email = "")
         {
-            if (token == "" || email == "")
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(email))
             {
                 ModelState.AddModelError(string.Empty, "A token must be supplied for password reset.");
             }
