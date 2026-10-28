@@ -1,5 +1,7 @@
-﻿@{
-    ViewData["Title"] = "Access Denied";
-}
-<h2>Access Denied</h2>
-<p>You do not have permission to access this resource.</p>
+﻿@{ Layout = "_AuthLayout"; ViewData["Title"] = "Access Denied"; }
+<div class="text-center">
+    <div class="mb-3"><i class="bi bi-shield-exclamation" style="font-size: 2rem; color: #dc2626;"></i></div>
+    <h2 class="h5 fw-semibold mb-1">Access denied</h2>
+    <p class="text-hint small">You don't have permission to access this resource.</p>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-ghost w-100"><i class="bi bi-house me-1"></i>Back to home</a>
+</div>
