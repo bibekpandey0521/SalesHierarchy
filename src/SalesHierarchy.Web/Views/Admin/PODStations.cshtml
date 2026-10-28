@@ -2,14 +2,33 @@
 @{
     ViewData["Title"] = "POD Stations";
 }
-<h2>POD Stations</h2>
-<p><a asp-action="CreatePODStation" class="btn btn-primary">Create</a></p>
-@if(TempData["Error"] != null){ <div class="text-danger">@TempData["Error"]</div> }
-<table class="table">
-    <thead><tr><th>Name</th><th>OSSPODStationId</th><th></th></tr></thead>
-    <tbody>
-    @foreach(var s in Model){
-        <tr><td>@s.Name</td><td>@s.OSSPODStationId</td><td><a asp-action="EditPODStation" asp-route-id="@s.ID">Edit</a> | <a asp-action="DeletePODStation" asp-route-id="@s.ID">Delete</a></td></tr>
-    }
-    </tbody>
-</table>
+<div class="card-clean">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <div class="fw-semibold">POD Stations</div>
+            <div class="text-hint small">Manage POD station master data</div>
+        </div>
+        <a asp-action="CreatePODStation" class="btn btn-brand"><i class="bi bi-plus-lg me-1"></i>Create</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-clean mb-0">
+                <thead>
+                    <tr><th>Name</th><th>OSSPODStationId</th><th class="text-end">Actions</th></tr>
+                </thead>
+                <tbody>
+                @foreach(var s in Model){
+                    <tr>
+                        <td class="fw-medium">@s.Name</td>
+                        <td class="text-hint">@s.OSSPODStationId</td>
+                        <td class="text-end">
+                            <a asp-action="EditPODStation" asp-route-id="@s.ID" class="btn btn-sm btn-ghost"><i class="bi bi-pencil"></i></a>
+                            <a asp-action="DeletePODStation" asp-route-id="@s.ID" class="btn btn-sm btn-ghost text-danger"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
