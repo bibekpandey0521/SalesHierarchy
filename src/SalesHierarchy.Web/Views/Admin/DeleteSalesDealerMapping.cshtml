@@ -1,0 +1,30 @@
+@model SalesHierarchy.Core.Models.SalesDealerMapping
+@using SalesHierarchy.Core.Models
+@{
+    ViewData["Title"] = "Delete mapping";
+    var salesPerson = ViewBag.SalesPerson as SalesPerson;
+    var dealer = ViewBag.Dealer as Dealer;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Delete mapping</h1>
+        <p class="page-subtitle">This only removes the assignment, not the salesperson or dealer.</p>
+    </div>
+    <a asp-action="SalesDealerMappings" class="btn btn-ghost">Back to list</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <div class="alert alert-warning border-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Remove the mapping between <strong>@(salesPerson?.Name ?? "unknown salesperson")</strong> and <strong>@(dealer?.Name ?? "unknown dealer")</strong>?
+        </div>
+        <form asp-action="DeleteSalesDealerMapping" method="post">
+            <input type="hidden" name="id" value="@Model.UniqueID" />
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-danger">Delete mapping</button>
+                <a asp-action="SalesDealerMappings" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

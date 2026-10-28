@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+.vs/
+TestResults/
+
+# Local developer settings and secrets
+appsettings.Development.local.json
+src/SalesHierarchy.Web/App_Data/
+*.user
+*.suo
+
+# Local database files (LocalDB)
+*.mdf
+*.ldf
+
+# IDE files
+.idea/
+*.swp

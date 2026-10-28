@@ -1,57 +1,124 @@
 ﻿# Testing Guide
 
 ## Prerequisites
-- SQL Server with database `SalesProdAuthDb` (or update connection string)
+
+- SQL Server or LocalDB with the `SalesProdAuthDb` database (run `database/Setup-LocalDb.ps1`, see README)
 - .NET 10 SDK
-- Run migrations/seed for Identity if needed
+- Identity tables present (`dotnet ef database update --project src/SalesHierarchy.Web`; Development also applies migrations at startup)
+- E-mail configuration only if you want to exercise real invitation delivery. Locally, the Development settings write messages to `src/SalesHierarchy.Web/App_Data/emails` instead.
 
-## Seed Initial Admin
-1. Run the app
-2. Navigate to `/Seed/CreateAdmin` 
-3. Login with `admin@saleshierarchy.local` / `Admin@123`
-4. Change password immediately
+## Automated tests
 
-## Manual Test Cases
+```powershell
+dotnet test SalesHierarchy.slnx
+```
 
-### Public Access (No Login)
-- [ ] GET `/` - Home loads
-- [ ] GET `/Public` - Public index
-- [ ] GET `/Public/SalesHierarchy` - Lists approved salesperson names/designations only
-- [ ] GET `/Public/PODStations` - Approved stations
-- [ ] GET `/Public/PODs` - Approved PODs
-- [ ] Try to access `/Admin/Dashboard` while unauthenticated - should redirect to login
+Covered automatically:
+
+| Area | Tests |
+|---|---|
+| Hierarchy rules | self-reporting, direct cycle, deep cycle, valid reassignment, descendants, manager chain, cycle tolerance |
+| Bulk row validation | required fields, e-mail formats, max lengths, manager e-mail format, self-reporting, in-file circular managers |
+| Bulk upload status | valid/invalid/duplicate rows, importability, batch counts |
+| Authorization | controller role attributes, POST + anti-forgery on all admin mutations |
+
+## Initial System Admin
+
+1. Configure `AdminBootstrap:Email` and `AdminBootstrap:Password` with user secrets (see README).
+2. Run the application.
+3. Sign in with the configured administrator.
+4. Remove the bootstrap secrets after the first login.
+
+There is no seed URL and no hard-coded password.
+
+## Manual test cases
+
+### Public access (no login)
+
+- [ ] `GET /` loads the home page.
+- [ ] `GET /Public` shows the directory overview.
+- [ ] `GET /Public/SalesHierarchy` lists only approved names, designations, and manager references.
+- [ ] `GET /Public/SalesHierarchy?q=...` filters results.
+- [ ] `GET /Public/PODStations` and `/Public/PODs` list approved data and support search.
+- [ ] Public HTML contains no e-mail addresses, dealer mappings, or account identifiers.
+- [ ] Visiting `/Admin/Dashboard` anonymously redirects to `/Account/Login`.
 
 ### Authentication
-- [ ] Login with valid credentials
-- [ ] Login with invalid credentials - generic error
-- [ ] Logout works
-- [ ] Forgot Password with non-existent email - still shows confirmation (no info leak)
-- [ ] Forgot Password with existing email - generates token, emails link (check EmailSender config)
-- [ ] Reset Password with valid token - can set new password
-- [ ] Reset Password with invalid/expired token - fails
-- [ ] Access Denied for unauthorized roles
 
-### Admin Functions
-- [ ] Only SystemAdmin can access `/Admin/*`
-- [ ] Create POD Station (CRUD) - deletion blocked if PODs exist
-- [ ] Create individual SalesPerson via `/Admin/CreateSalesPersonAccount` - creates Identity user linked to SalesPersonId, sends invitation
-- [ ] Resend invitation from User Account Management
-- [ ] Disable account from User Account Management
-- [ ] Bulk upload page loads with template download
-- [ ] Manage Dealers, Mappings, PODs
+- [ ] Valid credentials sign in and respect the return URL.
+- [ ] Invalid credentials show a generic error.
+- [ ] Sign out clears the session.
+- [ ] Forgot password with a non-existent e-mail still shows the confirmation page (no account enumeration).
+- [ ] Forgot password with an existing e-mail produces a reset link when SMTP is configured.
+- [ ] Reset password with a valid token succeeds; an invalid or expired token fails with a clear message.
+- [ ] A newly invited user cannot sign in before setting a password.
+- [ ] Account is locked after 5 failed attempts and unlocks after the lockout window.
+- [ ] Access denied page appears when a SalesPerson opens an admin URL.
 
-### SalesPerson Functions
-- [ ] SalesPerson login works only after password set via invitation
-- [ ] Can view My Profile, My PODs (only assigned), My Dealers (mapped)
-- [ ] Can view My Team (direct + indirect reports)
-- [ ] Cannot access `/Admin/*` - Access Denied
-- [ ] Cannot modify other teams data via URL manipulation - should be denied/filtered
-- [ ] Cannot change reporting manager
+### Admin CRUD
+
+For each module verify list, details, create, edit, delete confirmation, validation messages, and empty states:
+
+- [ ] POD Stations: duplicate name rejected; delete blocked while PODs reference the station.
+- [ ] Sales Persons: required name/designation; self-reporting rejected; circular manager rejected; invalid manager rejected; duplicate account e-mail rejected.
+- [ ] Sales Persons: delete blocked by direct reports, assigned PODs, dealer mappings, or a linked login account.
+- [ ] PODs: station and salesperson dropdowns are populated from the database; invalid values rejected; create/edit/delete work.
+- [ ] Dealers: duplicate code rejected; delete blocked while mappings exist.
+- [ ] Sales / Dealer mappings: duplicate pair rejected on create and on edit; reassignment works; delete confirmation works.
+
+### Individual account creation
+
+- [ ] Creating an account creates one `SalesPerson` row and one Identity user linked through `SalesPersonId`.
+- [ ] No password is chosen by the administrator.
+- [ ] The invitation link is e-mailed when SMTP is configured; otherwise the UI reports pending/failed.
+- [ ] With the Development pickup directory, a `.eml` file appears under `App_Data/emails`; opening its **Set my password** link lets the user choose a password and then sign in.
+- [ ] The administrator cannot see the new user's password anywhere in the UI or logs.
+- [ ] Existing e-mail is rejected without creating any record.
+- [ ] If user creation fails, the created business record is compensated (no orphan).
+
+### Activity log
+
+- [ ] **Admin → Activity Log** lists create/update/delete events with timestamp, actor, entity, and summary.
+- [ ] Editing a record stores before/after values; filters by entity, action, and search work.
+- [ ] Creating an account records both the `SalesPerson` and `UserAccount` events; setting a password records `PasswordSet`.
+- [ ] Bulk import records one `Import` event with imported/skipped/failed counts.
+- [ ] Password hashes, reset tokens, and invitation links never appear in `Details`.
+- [ ] If `dbo.AuditLog` is missing, the admin page shows a warning instead of failing, and normal CRUD still works.
+
+### Excel bulk upload
+
+- [ ] Template download returns a valid `.xlsx` with `Name`, `Designation`, `Email`, `ManagerEmail`.
+- [ ] A non-`.xlsx` file is rejected.
+- [ ] Wrong headers are rejected with a clear message.
+- [ ] Missing required fields produce row-level errors.
+- [ ] Invalid e-mail formats are reported.
+- [ ] Duplicate e-mails inside the file and against existing accounts are marked as skipped.
+- [ ] A manager appearing later in the file is resolved correctly.
+- [ ] Self-reporting and circular manager references are rejected.
+- [ ] Preview does not create any records; confirm does.
+- [ ] Re-uploading the same file does not create duplicate accounts.
+- [ ] Results show imported, failed, skipped, and invitation status.
+- [ ] Results workbook downloads and contains the rejected rows.
+- [ ] Rows that fail account creation are compensated and reported.
+
+### SalesPerson workspace
+
+- [ ] My Profile shows the manager and direct reports, and no admin links.
+- [ ] My PODs shows only PODs assigned to the signed-in salesperson.
+- [ ] My Dealers shows only dealers mapped to that salesperson.
+- [ ] My Team and Reporting Hierarchy include direct and indirect reports only.
+- [ ] Team Dealer Assignments allows adding/removing mappings for self and descendants.
+- [ ] Posting `salespersonId` for a user outside the team is rejected.
+- [ ] Removing another team's mapping ID is rejected.
+- [ ] SalesPerson cannot access `/Admin/*`, cannot change their manager, and cannot manage master data.
 
 ### Security
-- [ ] Anti-forgery tokens on POST forms
-- [ ] No passwords/tokens in logs
-- [ ] Generic responses for password recovery
-- [ ] Parameterized queries used (all ADO.NET repos use SqlCommand with parameters)
-- [ ] Role checks on controllers
-- [ ] Public endpoints only expose DTOs with approved fields
+
+- [ ] All POST forms include anti-forgery tokens.
+- [ ] No passwords or tokens appear in logs.
+- [ ] The activity log contains no password hashes, reset tokens, or invitation URLs.
+- [ ] Password recovery responses are generic.
+- [ ] All ADO.NET repositories use parameterized `SqlCommand` parameters.
+- [ ] Role checks exist on `AdminController` and `SalesPersonController`.
+- [ ] Public endpoints return DTOs with approved fields only.
+- [ ] Invalid IDs in routes return 404/forbidden rather than leaking other teams' data.

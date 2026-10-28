@@ -1,13 +1,68 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.Dealer>
 @{
     ViewData["Title"] = "Dealers";
+    var mappingCounts = ViewBag.MappingCounts as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var query = ViewBag.Query as string;
 }
-<h2>Dealers</h2>
-<table class="table">
-    <thead><tr><th>Name</th><th>Code</th></tr></thead>
-    <tbody>
-    @foreach(var d in Model){
-        <tr><td>@d.Name</td><td>@d.Code</td></tr>
-    }
-    </tbody>
-</table>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Dealers</h1>
+        <p class="page-subtitle">Dealer master data with unique dealer codes.</p>
+    </div>
+    <a asp-action="CreateDealer" class="btn btn-brand"><i class="bi bi-plus-lg me-1"></i>New dealer</a>
+</div>
+
+<div class="card-clean">
+    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <form method="get" class="d-flex gap-2">
+            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search dealer or code..." />
+            <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search"></i></button>
+        </form>
+        <span class="text-hint small">@Model.Count() dealer(s)</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-shop"></i>
+                <div class="fw-semibold">No dealers yet</div>
+                <div class="text-hint small">Add dealers before creating dealer mappings.</div>
+                <a asp-action="CreateDealer" class="btn btn-brand btn-sm mt-2">Create dealer</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead>
+                        <tr><th>Dealer</th><th>Code</th><th>Mappings</th><th class="text-end">Actions</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var dealer in Model)
+                    {
+                        <tr>
+                            <td class="fw-medium">@dealer.Name</td>
+                            <td class="mono text-hint">@(string.IsNullOrWhiteSpace(dealer.Code) ? "—" : dealer.Code)</td>
+                            <td>
+                                @if (mappingCounts.TryGetValue(dealer.UniqueID, out var count) && count > 0)
+                                {
+                                    <span class="badge-soft-neutral">@count</span>
+                                }
+                                else
+                                {
+                                    <span class="text-hint small">None</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="DetailsDealer" asp-route-id="@dealer.UniqueID" class="btn btn-sm btn-ghost" title="Details"><i class="bi bi-eye"></i></a>
+                                <a asp-action="EditDealer" asp-route-id="@dealer.UniqueID" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="DeleteDealer" asp-route-id="@dealer.UniqueID" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

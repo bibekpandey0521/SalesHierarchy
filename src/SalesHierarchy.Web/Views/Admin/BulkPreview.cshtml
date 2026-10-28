@@ -1,0 +1,107 @@
+@model SalesHierarchy.Web.Services.BulkUploadBatch
+@{
+    ViewData["Title"] = "Upload preview";
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Review upload</h1>
+        <p class="page-subtitle">@Model.FileName — nothing has been imported yet.</p>
+    </div>
+    <a asp-action="BulkUpload" class="btn btn-ghost">Upload another file</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-4">
+        <div class="stat-card">
+            <div class="stat-label">Ready to import</div>
+            <div class="stat-value text-success">@Model.ValidCount</div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="stat-card">
+            <div class="stat-label">Rows with errors</div>
+            <div class="stat-value text-danger">@Model.InvalidCount</div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="stat-card">
+            <div class="stat-label">Duplicates skipped</div>
+            <div class="stat-value">@Model.DuplicateCount</div>
+        </div>
+    </div>
+</div>
+
+<div class="card-clean mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Row validation</span>
+        <span class="text-hint small">Only rows marked Ready will be created.</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-clean mb-0">
+                <thead>
+                    <tr><th>Row</th><th>Name</th><th>Email</th><th>Manager email</th><th>Status</th><th>Details</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Rows.OrderBy(r => r.RowNumber))
+                {
+                    <tr>
+                        <td class="text-hint mono">@row.RowNumber</td>
+                        <td class="fw-medium">@row.Name</td>
+                        <td class="mono small">@row.Email</td>
+                        <td class="mono small text-hint">@(string.IsNullOrWhiteSpace(row.ManagerEmail) ? "—" : row.ManagerEmail)</td>
+                        <td>
+                            @if (row.Status == SalesHierarchy.Web.Services.BulkRowStatus.Valid)
+                            {
+                                <span class="badge-soft-success">Ready</span>
+                            }
+                            else if (row.Status == SalesHierarchy.Web.Services.BulkRowStatus.Duplicate)
+                            {
+                                <span class="badge-soft-warning">Duplicate</span>
+                            }
+                            else
+                            {
+                                <span class="badge-soft-danger">Invalid</span>
+                            }
+                        </td>
+                        <td class="small text-muted">
+                            @foreach (var error in row.Errors)
+                            {
+                                <div><i class="bi bi-exclamation-circle text-danger me-1"></i>@error</div>
+                            }
+                            @if (row.Errors.Count == 0)
+                            {
+                                <span class="text-hint">No issues found.</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card-clean">
+    <div class="card-body d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <div class="text-muted small">
+            @if (Model.ValidCount == 0)
+            {
+                <span>There is nothing to import. Fix the errors in the file and upload it again.</span>
+            }
+            else
+            {
+                <span>@Model.ValidCount salesperson(s) will be created with login accounts and password setup invitations.</span>
+            }
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="BulkUpload" class="btn btn-ghost">Cancel</a>
+            <form asp-action="ConfirmBulkUpload" method="post">
+                <input type="hidden" name="key" value="@Model.Key" />
+                <button type="submit" class="btn btn-brand" disabled="@(Model.ValidCount == 0 ? "disabled" : null)">
+                    <i class="bi bi-check2-circle me-1"></i>Confirm import
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

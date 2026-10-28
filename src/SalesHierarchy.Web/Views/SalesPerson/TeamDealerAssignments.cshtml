@@ -1,13 +1,107 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesDealerMapping>
+@using SalesHierarchy.Core.Models
 @{
     ViewData["Title"] = "Team Dealer Assignments";
+    var people = ViewBag.People as Dictionary<int, SalesPerson> ?? new Dictionary<int, SalesPerson>();
+    var dealers = ViewBag.Dealers as Dictionary<int, Dealer> ?? new Dictionary<int, Dealer>();
+    var dealerList = ViewBag.DealerList as List<Dealer> ?? new List<Dealer>();
+    var team = ViewBag.Team as List<SalesPerson> ?? new List<SalesPerson>();
+    var currentId = ViewBag.CurrentId is int currentPersonId ? currentPersonId : (int?)null;
 }
-<h2>Team Dealer Assignments</h2>
-<table class="table">
-    <thead><tr><th>UniqueID</th><th>SalespersonId</th><th>DealerId</th></tr></thead>
-    <tbody>
-    @foreach(var m in Model){
-        <tr><td>@m.UniqueID</td><td>@m.salespersonid</td><td>@m.dealerid</td></tr>
-    }
-    </tbody>
-</table>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Team Dealer Assignments</h1>
+        <p class="page-subtitle">Manage dealer mappings for yourself and your reporting line.</p>
+    </div>
+</div>
+
+@if (team.Count == 0)
+{
+    <div class="alert alert-warning border-0">Your account is not linked to a salesperson record, so team assignments are unavailable.</div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <div class="card-clean">
+                <div class="card-header">Add assignment</div>
+                <div class="card-body">
+                    <form asp-action="AddTeamMapping" method="post">
+                        <div class="mb-3">
+                            <label for="salespersonId" class="form-label">Salesperson</label>
+                            <select id="salespersonId" name="salespersonId" class="form-select" required>
+                                @foreach (var member in team)
+                                {
+                                    <option value="@member.ID" selected="@(currentId == member.ID ? "selected" : null)">@member.Name@(member.ID == currentId ? " (me)" : "")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dealerId" class="form-label">Dealer</label>
+                            <select id="dealerId" name="dealerId" class="form-select" required>
+                                <option value="">Select a dealer</option>
+                                @foreach (var dealer in dealerList)
+                                {
+                                    <option value="@dealer.UniqueID">@dealer.Name — @dealer.Code</option>
+                                }
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-brand" disabled="@(dealerList.Count == 0 ? "disabled" : null)">
+                            <i class="bi bi-plus-lg me-1"></i>Add mapping
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card-clean">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Team mappings</span>
+                    <span class="badge-soft-neutral">@Model.Count()</span>
+                </div>
+                <div class="card-body p-0">
+                    @if (!Model.Any())
+                    {
+                        <div class="empty-state py-4">
+                            <i class="bi bi-diagram-2"></i>
+                            <div class="text-hint small">No dealer assignments in your team yet.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-clean mb-0">
+                                <thead><tr><th>Salesperson</th><th>Dealer</th><th class="text-end"></th></tr></thead>
+                                <tbody>
+                                @foreach (var mapping in Model)
+                                {
+                                    <tr>
+                                        <td class="fw-medium">
+                                            @(people.TryGetValue(mapping.salespersonid, out var person) ? person.Name : "Unknown")
+                                            @if (currentId == mapping.salespersonid)
+                                            {
+                                                <span class="badge-soft-neutral ms-1">me</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div>@(dealers.TryGetValue(mapping.dealerid, out var dealer) ? dealer.Name : "Unknown")</div>
+                                            <div class="text-hint mono small">@(dealers.TryGetValue(mapping.dealerid, out var dealerCode) ? dealerCode.Code : "—")</div>
+                                        </td>
+                                        <td class="text-end">
+                                            <form asp-action="RemoveTeamMapping" method="post" onsubmit="return confirm('Remove this dealer assignment?');">
+                                                <input type="hidden" name="id" value="@mapping.UniqueID" />
+                                                <button type="submit" class="btn btn-sm btn-ghost text-danger" title="Remove"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

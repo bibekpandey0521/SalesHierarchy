@@ -1,17 +1,34 @@
 ﻿@model SalesHierarchy.Core.Models.PODStation
 @{
-    ViewData["Title"] = "Create POD Station";
+    ViewData["Title"] = "New POD station";
 }
-<h2>Create POD Station</h2>
-<form asp-action="CreatePODStation" method="post">
-    <div class="form-group">
-        <label asp-for="Name"></label>
-        <input asp-for="Name" class="form-control" />
-        <span asp-validation-for="Name" class="text-danger"></span>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">New POD station</h1>
+        <p class="page-subtitle">Add a station that PODs can be assigned to.</p>
     </div>
-    <div class="form-group">
-        <label asp-for="OSSPODStationId"></label>
-        <input asp-for="OSSPODStationId" class="form-control" />
+    <a asp-action="PODStations" class="btn btn-ghost">Back to list</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <form asp-action="CreatePODStation" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" autocomplete="off" />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="OSSPODStationId" class="form-label"></label>
+                <input asp-for="OSSPODStationId" class="form-control mono" autocomplete="off" />
+                <div class="form-text text-hint">Optional external identifier used by OSS.</div>
+                <span asp-validation-for="OSSPODStationId" class="text-danger small"></span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-brand">Create station</button>
+                <a asp-action="PODStations" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
     </div>
-    <button type="submit" class="btn btn-primary">Create</button>
-</form>
+</div>

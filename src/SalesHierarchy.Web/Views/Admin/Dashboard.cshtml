@@ -1,14 +1,101 @@
 ﻿@{
     ViewData["Title"] = "Admin Dashboard";
 }
-<h2>Admin Dashboard</h2>
-<ul>
-    <li><a asp-action="PODStations">POD Stations</a></li>
-    <li><a asp-action="PODs">PODs</a></li>
-    <li><a asp-action="SalesPersons">Sales Persons</a></li>
-    <li><a asp-action="Dealers">Dealers</a></li>
-    <li><a asp-action="SalesDealerMappings">Sales Dealer Mappings</a></li>
-    <li><a asp-action="CreateSalesPersonAccount">Individual SalesPerson Account Creation</a></li>
-    <li><a asp-action="BulkUpload">Excel Bulk Upload</a></li>
-    <li><a asp-action="UserAccountManagement">User Account Management</a></li>
-</ul>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Overview</h1>
+        <p class="page-subtitle">Master data, hierarchy, and account activity.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="BulkUpload" class="btn btn-ghost"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Bulk upload</a>
+        <a asp-action="CreateSalesPersonAccount" class="btn btn-brand"><i class="bi bi-person-plus me-1"></i>Create account</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">POD stations</div>
+            <div class="stat-value">@ViewBag.PodStationCount</div>
+            <a asp-action="PODStations" class="stat-link">Manage stations <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">PODs</div>
+            <div class="stat-value">@ViewBag.PodCount</div>
+            <a asp-action="PODs" class="stat-link">Manage PODs <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Salespersons</div>
+            <div class="stat-value">@ViewBag.SalesPersonCount</div>
+            <a asp-action="SalesPersons" class="stat-link">Manage records <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-label">Dealers</div>
+            <div class="stat-value">@ViewBag.DealerCount</div>
+            <a asp-action="Dealers" class="stat-link">Manage dealers <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card-clean">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Quick actions</span>
+                <span class="text-hint small">Day-to-day administration</span>
+            </div>
+            <div class="card-body">
+                <div class="quick-grid">
+                    <a asp-action="SalesPersons" class="quick-link">
+                        <i class="bi bi-people"></i>
+                        <div>
+                            <div class="fw-semibold">Salespersons</div>
+                            <div class="text-hint small">Hierarchy and reporting lines</div>
+                        </div>
+                    </a>
+                    <a asp-action="SalesDealerMappings" class="quick-link">
+                        <i class="bi bi-diagram-2"></i>
+                        <div>
+                            <div class="fw-semibold">Dealer mappings</div>
+                            <div class="text-hint small">@ViewBag.MappingCount assignment(s)</div>
+                        </div>
+                    </a>
+                    <a asp-action="UserAccountManagement" class="quick-link">
+                        <i class="bi bi-shield-lock"></i>
+                        <div>
+                            <div class="fw-semibold">User accounts</div>
+                            <div class="text-hint small">@ViewBag.UserCount account(s), invites and disablement</div>
+                        </div>
+                    </a>
+                    <a asp-action="BulkUpload" class="quick-link">
+                        <i class="bi bi-file-earmark-spreadsheet"></i>
+                        <div>
+                            <div class="fw-semibold">Bulk upload</div>
+                            <div class="text-hint small">Create records and accounts from Excel</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card-clean">
+            <div class="card-header">Security checklist</div>
+            <div class="card-body">
+                <ul class="check-list mb-0">
+                    <li><i class="bi bi-check2"></i>Only System Administrators can create login accounts.</li>
+                    <li><i class="bi bi-check2"></i>Password setup links are single-use and time-limited.</li>
+                    <li><i class="bi bi-check2"></i>Failed invitations are reported, never silently ignored.</li>
+                    <li><i class="bi bi-check2"></i>Deletes are blocked while dependencies exist.</li>
+                    <li><i class="bi bi-check2"></i>Public pages never show emails or dealer mappings.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

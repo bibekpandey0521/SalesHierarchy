@@ -1,0 +1,35 @@
+@model SalesHierarchy.Core.Models.Dealer
+@{
+    ViewData["Title"] = "New dealer";
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">New dealer</h1>
+        <p class="page-subtitle">Dealer codes must be unique.</p>
+    </div>
+    <a asp-action="Dealers" class="btn btn-ghost">Back to list</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <form asp-action="CreateDealer" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" autocomplete="off" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Code" class="form-label"></label>
+                    <input asp-for="Code" class="form-control mono" autocomplete="off" />
+                    <span asp-validation-for="Code" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-brand">Create dealer</button>
+                <a asp-action="Dealers" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

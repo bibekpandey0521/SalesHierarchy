@@ -1,10 +1,49 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.DTOs.PublicPODDto>
 @{
     ViewData["Title"] = "PODs";
+    var query = ViewBag.Query as string;
 }
-<h2>PODs</h2>
-<ul>
-@foreach(var p in Model){
-    <li>@p.Name</li>
-}
-</ul>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">PODs</h1>
+        <p class="page-subtitle">Approved point-of-distribution directory.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-ghost">Directory home</a>
+</div>
+
+<div class="card-clean">
+    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <form method="get" class="d-flex gap-2">
+            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search PODs..." />
+            <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search"></i></button>
+        </form>
+        <span class="text-hint small">@Model.Count() POD(s)</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-geo-alt"></i>
+                <div class="fw-semibold">No matching PODs</div>
+                <div class="text-hint small">Try a different search term.</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead><tr><th>POD</th><th>OSS POD Id</th></tr></thead>
+                    <tbody>
+                    @foreach (var pod in Model)
+                    {
+                        <tr>
+                            <td class="fw-medium">@pod.Name</td>
+                            <td class="mono text-hint">@(string.IsNullOrWhiteSpace(pod.OSSPODID) ? "—" : pod.OSSPODID)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

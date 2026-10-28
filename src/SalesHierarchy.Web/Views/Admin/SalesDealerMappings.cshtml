@@ -1,13 +1,79 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesDealerMapping>
 @{
-    ViewData["Title"] = "Sales Dealer Mappings";
+    ViewData["Title"] = "Sales / Dealer Mappings";
+    var people = ViewBag.People as Dictionary<int, SalesHierarchy.Core.Models.SalesPerson> ?? new Dictionary<int, SalesHierarchy.Core.Models.SalesPerson>();
+    var dealers = ViewBag.Dealers as Dictionary<int, SalesHierarchy.Core.Models.Dealer> ?? new Dictionary<int, SalesHierarchy.Core.Models.Dealer>();
+    var query = ViewBag.Query as string;
 }
-<h2>Sales Dealer Mappings</h2>
-<table class="table">
-    <thead><tr><th>UniqueID</th><th>SalespersonId</th><th>DealerId</th></tr></thead>
-    <tbody>
-    @foreach(var m in Model){
-        <tr><td>@m.UniqueID</td><td>@m.salespersonid</td><td>@m.dealerid</td></tr>
-    }
-    </tbody>
-</table>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Sales / Dealer Mappings</h1>
+        <p class="page-subtitle">Assign dealers to salespersons. Duplicate pairs are rejected.</p>
+    </div>
+    <a asp-action="CreateSalesDealerMapping" class="btn btn-brand"><i class="bi bi-plus-lg me-1"></i>New mapping</a>
+</div>
+
+<div class="card-clean">
+    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <form method="get" class="d-flex gap-2">
+            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search salesperson or dealer..." />
+            <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search"></i></button>
+        </form>
+        <span class="text-hint small">@Model.Count() mapping(s)</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-diagram-2"></i>
+                <div class="fw-semibold">No mappings yet</div>
+                <div class="text-hint small">Map a dealer to a salesperson to start tracking assignments.</div>
+                <a asp-action="CreateSalesDealerMapping" class="btn btn-brand btn-sm mt-2">Create mapping</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead>
+                        <tr><th>Salesperson</th><th>Designation</th><th>Dealer</th><th>Code</th><th class="text-end">Actions</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var mapping in Model)
+                    {
+                        <tr>
+                            <td class="fw-medium">
+                                @if (people.TryGetValue(mapping.salespersonid, out var person))
+                                {
+                                    <a asp-action="DetailsSalesPerson" asp-route-id="@person.ID" class="link-subtle">@person.Name</a>
+                                }
+                                else
+                                {
+                                    <span class="text-hint">Unknown</span>
+                                }
+                            </td>
+                            <td class="text-hint">@(people.TryGetValue(mapping.salespersonid, out var personDesignation) ? personDesignation.Designation : "—")</td>
+                            <td>
+                                @if (dealers.TryGetValue(mapping.dealerid, out var dealer))
+                                {
+                                    <a asp-action="DetailsDealer" asp-route-id="@dealer.UniqueID" class="link-subtle">@dealer.Name</a>
+                                }
+                                else
+                                {
+                                    <span class="text-hint">Unknown</span>
+                                }
+                            </td>
+                            <td class="mono text-hint">@(dealers.TryGetValue(mapping.dealerid, out var dealerCode) ? dealerCode.Code : "—")</td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="DetailsSalesDealerMapping" asp-route-id="@mapping.UniqueID" class="btn btn-sm btn-ghost" title="Details"><i class="bi bi-eye"></i></a>
+                                <a asp-action="EditSalesDealerMapping" asp-route-id="@mapping.UniqueID" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="DeleteSalesDealerMapping" asp-route-id="@mapping.UniqueID" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,57 @@
+@model SalesHierarchy.Core.Models.SalesDealerMapping
+@{
+    ViewData["Title"] = "New mapping";
+    var salesPersons = ViewBag.SalesPersons as List<SalesHierarchy.Core.Models.SalesPerson> ?? new List<SalesHierarchy.Core.Models.SalesPerson>();
+    var dealers = ViewBag.Dealers as List<SalesHierarchy.Core.Models.Dealer> ?? new List<SalesHierarchy.Core.Models.Dealer>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">New mapping</h1>
+        <p class="page-subtitle">Assign a dealer to a salesperson.</p>
+    </div>
+    <a asp-action="SalesDealerMappings" class="btn btn-ghost">Back to list</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        @if (salesPersons.Count == 0 || dealers.Count == 0)
+        {
+            <div class="alert alert-warning border-0">
+                A mapping needs at least one salesperson and one dealer.
+                <a asp-action="SalesPersons" class="alert-link">Manage salespersons</a> or
+                <a asp-action="Dealers" class="alert-link">manage dealers</a>.
+            </div>
+        }
+        <form asp-action="CreateSalesDealerMapping" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="salespersonid" class="form-label"></label>
+                    <select asp-for="salespersonid" class="form-select">
+                        <option value="">Select a salesperson</option>
+                        @foreach (var person in salesPersons)
+                        {
+                            <option value="@person.ID">@person.Name — @person.Designation</option>
+                        }
+                    </select>
+                    <span asp-validation-for="salespersonid" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="dealerid" class="form-label"></label>
+                    <select asp-for="dealerid" class="form-select">
+                        <option value="">Select a dealer</option>
+                        @foreach (var dealer in dealers)
+                        {
+                            <option value="@dealer.UniqueID">@dealer.Name — @dealer.Code</option>
+                        }
+                    </select>
+                    <span asp-validation-for="dealerid" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-brand">Create mapping</button>
+                <a asp-action="SalesDealerMappings" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

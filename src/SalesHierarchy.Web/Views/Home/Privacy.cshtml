@@ -1,6 +1,22 @@
 ﻿@{
     ViewData["Title"] = "Privacy Policy";
 }
-<h1>@ViewData["Title"]</h1>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Privacy Policy</h1>
+        <p class="page-subtitle">What this application stores and what it publishes.</p>
+    </div>
+</div>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<div class="card-clean">
+    <div class="card-body">
+        <h2 class="h6 fw-semibold">Public information</h2>
+        <p class="text-muted">Public pages publish only approved business fields: salesperson names and designations, reporting references, POD station names, and POD names. Public pages never publish e-mail addresses, account identifiers, dealer mappings, or authentication data.</p>
+
+        <h2 class="h6 fw-semibold mt-4">Account information</h2>
+        <p class="text-muted">Login accounts are created by a System Administrator. Passwords are hashed by ASP.NET Core Identity and are never stored or logged in plaintext. Password setup and reset links use time-limited, single-use tokens.</p>
+
+        <h2 class="h6 fw-semibold mt-4">Access control</h2>
+        <p class="text-muted mb-0">SalesPersons can only view their own profile and the records of their direct and indirect reports. Administrative functions require the SystemAdmin role and are enforced on the server, not just hidden in the navigation.</p>
+    </div>
+</div>

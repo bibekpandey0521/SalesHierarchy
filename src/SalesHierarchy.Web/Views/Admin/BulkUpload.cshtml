@@ -1,14 +1,50 @@
 ﻿@{
     ViewData["Title"] = "Bulk Upload";
 }
-<h2>Bulk Upload (Excel)</h2>
-<p><a asp-action="DownloadTemplate">Download Template</a></p>
-<form asp-action="BulkUpload" method="post" enctype="multipart/form-data">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-    <div class="form-group">
-        <input type="file" name="file" accept=".xlsx" />
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Bulk upload salespersons</h1>
+        <p class="page-subtitle">Create salesperson records and login accounts from an Excel file.</p>
     </div>
-    <button type="submit" class="btn btn-primary">Upload</button>
-</form>
-@if(TempData["Message"] != null){ <div>@TempData["Message"]</div> }
-<p>Template columns: Name, Designation, Email, ManagerEmail (ManagerEmail blank for top-level).</p>
+    <a asp-action="SalesPersons" class="btn btn-ghost">Back to salespersons</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card-clean">
+            <div class="card-header">1. Upload the completed template</div>
+            <div class="card-body">
+                <form asp-action="BulkUpload" method="post" enctype="multipart/form-data">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger border-0 small" role="alert"></div>
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Excel workbook (.xlsx)</label>
+                        <input type="file" id="file" name="file" class="form-control" accept=".xlsx" required />
+                        <div class="form-text text-hint">Maximum 1,000 rows and 5 MB. Every row is validated before anything is imported.</div>
+                    </div>
+                    <button type="submit" class="btn btn-brand"><i class="bi bi-upload me-1"></i>Validate and preview</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card-clean mb-3">
+            <div class="card-header">Template</div>
+            <div class="card-body">
+                <p class="text-muted small">The template contains the required columns and a sample row. Delete the sample row before uploading.</p>
+                <a asp-action="DownloadTemplate" class="btn btn-ghost"><i class="bi bi-download me-1"></i>Download template</a>
+            </div>
+        </div>
+        <div class="card-clean">
+            <div class="card-header">Before you upload</div>
+            <div class="card-body">
+                <ul class="check-list mb-0">
+                    <li><i class="bi bi-check2"></i>Name and Designation are required.</li>
+                    <li><i class="bi bi-check2"></i>Email must be unique and must not already have an account.</li>
+                    <li><i class="bi bi-check2"></i>ManagerEmail is optional; it can reference another row or an existing account.</li>
+                    <li><i class="bi bi-check2"></i>Self-reporting and circular hierarchies are rejected.</li>
+                    <li><i class="bi bi-check2"></i>Passwords are never placed in the file — invited users receive a secure setup link.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

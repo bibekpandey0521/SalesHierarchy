@@ -1,12 +1,85 @@
-﻿@{
-    ViewData["Title"] = "SalesPerson Dashboard";
+﻿@model SalesHierarchy.Core.Models.SalesPerson?
+@{
+    ViewData["Title"] = "My Dashboard";
+    var manager = ViewBag.Manager as SalesHierarchy.Core.Models.SalesPerson;
 }
-<h2>SalesPerson Dashboard</h2>
-<ul>
-    <li><a asp-action="MyProfile">My Profile</a></li>
-    <li><a asp-action="MyPODs">My PODs</a></li>
-    <li><a asp-action="MyDealers">My Dealers</a></li>
-    <li><a asp-action="MyTeam">My Team</a></li>
-    <li><a asp-action="ReportingHierarchy">Reporting Hierarchy</a></li>
-    <li><a asp-action="TeamDealerAssignments">Team Dealer Assignments</a></li>
-</ul>
+@if (Model == null)
+{
+    <div class="card-clean">
+        <div class="card-body">
+            <div class="alert alert-warning border-0 mb-0">
+                Your account is not linked to a salesperson record yet. Ask a System Administrator to link your account.
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">Welcome, @Model.Name</h1>
+            <p class="page-subtitle">@(string.IsNullOrWhiteSpace(Model.Designation) ? "Salesperson" : Model.Designation)@(manager != null ? $" · reports to {manager.Name}" : " · top level")</p>
+        </div>
+        <a asp-action="ReportingHierarchy" class="btn btn-ghost"><i class="bi bi-diagram-3 me-1"></i>View hierarchy</a>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-sm-4">
+            <div class="stat-card">
+                <div class="stat-label">My PODs</div>
+                <div class="stat-value">@ViewBag.PodCount</div>
+                <a asp-action="MyPODs" class="stat-link">View PODs <i class="bi bi-arrow-right"></i></a>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="stat-card">
+                <div class="stat-label">My dealers</div>
+                <div class="stat-value">@ViewBag.DealerCount</div>
+                <a asp-action="MyDealers" class="stat-link">View dealers <i class="bi bi-arrow-right"></i></a>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="stat-card">
+                <div class="stat-label">Team members</div>
+                <div class="stat-value">@ViewBag.TeamCount</div>
+                <a asp-action="MyTeam" class="stat-link">View team <i class="bi bi-arrow-right"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-clean">
+        <div class="card-header">Quick actions</div>
+        <div class="card-body">
+            <div class="quick-grid">
+                <a asp-action="MyProfile" class="quick-link">
+                    <i class="bi bi-person"></i>
+                    <div>
+                        <div class="fw-semibold">My profile</div>
+                        <div class="text-hint small">Your designation, manager, and direct reports</div>
+                    </div>
+                </a>
+                <a asp-action="MyDealers" class="quick-link">
+                    <i class="bi bi-shop"></i>
+                    <div>
+                        <div class="fw-semibold">My dealers</div>
+                        <div class="text-hint small">Dealers mapped to you</div>
+                    </div>
+                </a>
+                <a asp-action="TeamDealerAssignments" class="quick-link">
+                    <i class="bi bi-diagram-2"></i>
+                    <div>
+                        <div class="fw-semibold">Team dealer assignments</div>
+                        <div class="text-hint small">Manage dealer mappings within your team</div>
+                    </div>
+                </a>
+                <a asp-action="ReportingHierarchy" class="quick-link">
+                    <i class="bi bi-diagram-3"></i>
+                    <div>
+                        <div class="fw-semibold">Reporting hierarchy</div>
+                        <div class="text-hint small">Your position and everyone below you</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+}

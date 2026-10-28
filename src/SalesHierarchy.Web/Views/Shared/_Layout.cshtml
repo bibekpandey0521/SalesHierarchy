@@ -45,6 +45,7 @@
                     <a class="nav-link" asp-controller="Admin" asp-action="CreateSalesPersonAccount"><i class="bi bi-person-plus"></i> <span>Create Account</span></a>
                     <a class="nav-link" asp-controller="Admin" asp-action="BulkUpload"><i class="bi bi-file-earmark-spreadsheet"></i> <span>Bulk Upload</span></a>
                     <a class="nav-link" asp-controller="Admin" asp-action="UserAccountManagement"><i class="bi bi-shield-lock"></i> <span>User Accounts</span></a>
+                    <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "AuditLog" ? "active" : "")" asp-controller="Admin" asp-action="AuditLog"><i class="bi bi-clock-history"></i> <span>Activity Log</span></a>
                 }
                 @if (User.IsInRole("SalesPerson"))
                 {

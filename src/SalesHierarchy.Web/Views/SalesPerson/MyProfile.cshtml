@@ -1,14 +1,97 @@
-﻿@model SalesHierarchy.Core.Models.SalesPerson
+﻿@model SalesHierarchy.Core.Models.SalesPerson?
+@using SalesHierarchy.Core.Models
 @{
     ViewData["Title"] = "My Profile";
+    var manager = ViewBag.Manager as SalesPerson;
+    var managerChain = ViewBag.ManagerChain as IReadOnlyList<SalesPerson> ?? new List<SalesPerson>();
+    var directReports = ViewBag.DirectReports as List<SalesPerson> ?? new List<SalesPerson>();
 }
-<h2>My Profile</h2>
-@if(Model == null){
-    <p>No linked SalesPerson record found.</p>
-} else {
-    <dl>
-        <dt>Name</dt><dd>@Model.Name</dd>
-        <dt>Designation</dt><dd>@Model.Designation</dd>
-        <dt>ManagerId</dt><dd>@Model.ManagerId</dd>
-    </dl>
+@if (Model == null)
+{
+    <div class="card-clean">
+        <div class="card-body">
+            <div class="alert alert-warning border-0 mb-0">Your account is not linked to a salesperson record yet.</div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@Model.Name</h1>
+            <p class="page-subtitle">@(string.IsNullOrWhiteSpace(Model.Designation) ? "No designation" : Model.Designation)</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <div class="card-clean mb-3">
+                <div class="card-header">Profile</div>
+                <div class="card-body">
+                    <dl class="detail-list mb-0">
+                        <dt>Name</dt>
+                        <dd>@Model.Name</dd>
+                        <dt>Designation</dt>
+                        <dd>@(string.IsNullOrWhiteSpace(Model.Designation) ? "—" : Model.Designation)</dd>
+                        <dt>Reporting manager</dt>
+                        <dd>@(manager?.Name ?? "Top level")</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card-clean">
+                <div class="card-header">Reporting chain</div>
+                <div class="card-body">
+                    @if (managerChain.Count == 0)
+                    {
+                        <p class="text-hint small mb-0">You are at the top of the reporting hierarchy.</p>
+                    }
+                    else
+                    {
+                        <ol class="chain-list mb-0">
+                            @foreach (var chainManager in managerChain)
+                            {
+                                <li><span>@chainManager.Name</span><span class="text-hint small">@chainManager.Designation</span></li>
+                            }
+                        </ol>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card-clean">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>My direct reports</span>
+                    <span class="badge-soft-neutral">@directReports.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    @if (directReports.Count == 0)
+                    {
+                        <div class="empty-state py-4">
+                            <i class="bi bi-person-check"></i>
+                            <div class="text-hint small">You have no direct reports.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-clean mb-0">
+                                <thead><tr><th>Name</th><th>Designation</th></tr></thead>
+                                <tbody>
+                                @foreach (var report in directReports)
+                                {
+                                    <tr>
+                                        <td class="fw-medium">@report.Name</td>
+                                        <td class="text-hint">@(string.IsNullOrWhiteSpace(report.Designation) ? "—" : report.Designation)</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 }

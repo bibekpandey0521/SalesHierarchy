@@ -1,10 +1,46 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.DTOs.PublicPODStationDto>
 @{
     ViewData["Title"] = "POD Stations";
+    var query = ViewBag.Query as string;
 }
-<h2>POD Stations</h2>
-<ul>
-@foreach(var s in Model){
-    <li>@s.Name</li>
-}
-</ul>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">POD Stations</h1>
+        <p class="page-subtitle">Approved POD station directory.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-ghost">Directory home</a>
+</div>
+
+<div class="card-clean">
+    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <form method="get" class="d-flex gap-2">
+            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search stations..." />
+            <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search"></i></button>
+        </form>
+        <span class="text-hint small">@Model.Count() station(s)</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-building"></i>
+                <div class="fw-semibold">No matching stations</div>
+                <div class="text-hint small">Try a different search term.</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead><tr><th>Station</th></tr></thead>
+                    <tbody>
+                    @foreach (var station in Model)
+                    {
+                        <tr><td class="fw-medium">@station.Name</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

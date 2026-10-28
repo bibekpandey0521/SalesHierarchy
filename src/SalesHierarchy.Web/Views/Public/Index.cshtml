@@ -1,9 +1,44 @@
 ﻿@{
-    ViewData["Title"] = "Public";
+    ViewData["Title"] = "Public Directory";
 }
-<h2>Public Information</h2>
-<ul>
-    <li><a asp-action="SalesHierarchy">Public Sales Hierarchy</a></li>
-    <li><a asp-action="PODStations">Approved POD Stations</a></li>
-    <li><a asp-action="PODs">Approved PODs</a></li>
-</ul>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Public Directory</h1>
+        <p class="page-subtitle">Read-only, approved information about the sales organization. No sign-in required.</p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Salespersons</div>
+            <div class="stat-value">@ViewBag.SalesPersonCount</div>
+            <a asp-action="SalesHierarchy" class="stat-link">View hierarchy <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">POD stations</div>
+            <div class="stat-value">@ViewBag.PODStationCount</div>
+            <a asp-action="PODStations" class="stat-link">View stations <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">PODs</div>
+            <div class="stat-value">@ViewBag.PODCount</div>
+            <a asp-action="PODs" class="stat-link">View PODs <i class="bi bi-arrow-right"></i></a>
+        </div>
+    </div>
+</div>
+
+<div class="card-clean mt-3">
+    <div class="card-header">What is published here</div>
+    <div class="card-body">
+        <ul class="check-list mb-0">
+            <li><i class="bi bi-check2"></i>Approved salesperson names, designations, and reporting lines.</li>
+            <li><i class="bi bi-check2"></i>Approved POD station and POD names.</li>
+            <li><i class="bi bi-x-circle text-muted"></i>Emails, dealer mappings, account details, and all internal data stay private.</li>
+        </ul>
+    </div>
+</div>

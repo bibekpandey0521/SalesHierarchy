@@ -1,34 +1,57 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.PODStation>
 @{
     ViewData["Title"] = "POD Stations";
+    var query = ViewBag.Query as string;
 }
+<div class="page-head">
+    <div>
+        <h1 class="page-title">POD Stations</h1>
+        <p class="page-subtitle">Master data for POD station locations.</p>
+    </div>
+    <a asp-action="CreatePODStation" class="btn btn-brand"><i class="bi bi-plus-lg me-1"></i>New station</a>
+</div>
+
 <div class="card-clean">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-            <div class="fw-semibold">POD Stations</div>
-            <div class="text-hint small">Manage POD station master data</div>
-        </div>
-        <a asp-action="CreatePODStation" class="btn btn-brand"><i class="bi bi-plus-lg me-1"></i>Create</a>
+    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <form method="get" class="d-flex gap-2">
+            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search stations..." />
+            <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search"></i></button>
+        </form>
+        <span class="text-hint small">@Model.Count() station(s)</span>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-clean mb-0">
-                <thead>
-                    <tr><th>Name</th><th>OSSPODStationId</th><th class="text-end">Actions</th></tr>
-                </thead>
-                <tbody>
-                @foreach(var s in Model){
-                    <tr>
-                        <td class="fw-medium">@s.Name</td>
-                        <td class="text-hint">@s.OSSPODStationId</td>
-                        <td class="text-end">
-                            <a asp-action="EditPODStation" asp-route-id="@s.ID" class="btn btn-sm btn-ghost"><i class="bi bi-pencil"></i></a>
-                            <a asp-action="DeletePODStation" asp-route-id="@s.ID" class="btn btn-sm btn-ghost text-danger"><i class="bi bi-trash"></i></a>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-building"></i>
+                <div class="fw-semibold">No POD stations yet</div>
+                <div class="text-hint small">Create your first station to start assigning PODs.</div>
+                <a asp-action="CreatePODStation" class="btn btn-brand btn-sm mt-2">Create station</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead>
+                        <tr><th>Name</th><th>OSS POD Station Id</th><th class="text-end">Actions</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var station in Model)
+                    {
+                        <tr>
+                            <td class="fw-medium">@station.Name</td>
+                            <td class="text-hint mono">@(string.IsNullOrWhiteSpace(station.OSSPODStationId) ? "—" : station.OSSPODStationId)</td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="DetailsPODStation" asp-route-id="@station.ID" class="btn btn-sm btn-ghost" title="Details"><i class="bi bi-eye"></i></a>
+                                <a asp-action="EditPODStation" asp-route-id="@station.ID" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="DeletePODStation" asp-route-id="@station.ID" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>

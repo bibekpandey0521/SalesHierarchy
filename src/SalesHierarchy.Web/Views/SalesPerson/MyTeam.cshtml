@@ -1,13 +1,49 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
 @{
     ViewData["Title"] = "My Team";
+    var people = ViewBag.People as Dictionary<int, SalesHierarchy.Core.Models.SalesPerson> ?? new Dictionary<int, SalesHierarchy.Core.Models.SalesPerson>();
 }
-<h2>My Team (Direct & Indirect Reports)</h2>
-<table class="table">
-    <thead><tr><th>Name</th><th>Designation</th><th>ManagerId</th></tr></thead>
-    <tbody>
-    @foreach(var s in Model){
-        <tr><td>@s.Name</td><td>@s.Designation</td><td>@s.ManagerId</td></tr>
-    }
-    </tbody>
-</table>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">My Team</h1>
+        <p class="page-subtitle">Direct and indirect reports in your reporting line.</p>
+    </div>
+    <a asp-action="ReportingHierarchy" class="btn btn-ghost">View hierarchy</a>
+</div>
+
+<div class="card-clean">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Team members</span>
+        <span class="badge-soft-neutral">@Model.Count()</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-people"></i>
+                <div class="fw-semibold">No team members</div>
+                <div class="text-hint small">Nobody currently reports to you, directly or indirectly.</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead><tr><th>Name</th><th>Designation</th><th>Reports to</th></tr></thead>
+                    <tbody>
+                    @foreach (var member in Model)
+                    {
+                        <tr>
+                            <td class="fw-medium">@member.Name</td>
+                            <td class="text-hint">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
+                            <td class="text-hint">
+                                @(member.ManagerId.HasValue && people.TryGetValue(member.ManagerId.Value, out var manager) ? manager.Name : "—")
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

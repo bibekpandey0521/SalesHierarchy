@@ -35,5 +35,6 @@
     <Build Include="Tables\POD.sql" />
     <Build Include="Tables\Dealer.sql" />
     <Build Include="Tables\salesdealermapping.sql" />
+    <Build Include="Tables\AuditLog.sql" />
   </ItemGroup>
 </Project>

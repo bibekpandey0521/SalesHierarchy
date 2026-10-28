@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Data.SqlClient;
 using SalesHierarchy.Core.Interfaces.Repositories;
 using SalesHierarchy.Core.Models;
@@ -9,6 +10,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
     public class PODStationRepository : IPODStationRepository
     {
         private readonly SqlConnectionFactory _factory;
+
         public PODStationRepository(SqlConnectionFactory factory)
         {
             _factory = factory;
@@ -19,7 +21,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             var list = new List<PODStation>();
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
-            using var cmd = new SqlCommand("SELECT ID, OSSPODStationId, Name FROM PODStation", conn);
+            using var cmd = new SqlCommand("SELECT ID, OSSPODStationId, Name FROM PODStation ORDER BY Name", conn);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -52,15 +54,25 @@ namespace SalesHierarchy.Infrastructure.Repositories
             return null;
         }
 
+        public bool ExistsByName(string name, int? excludeId = null)
+        {
+            using var conn = (SqlConnection)_factory.CreateConnection();
+            conn.Open();
+            using var cmd = new SqlCommand(
+                "SELECT COUNT(1) FROM PODStation WHERE Name = @name AND (@excludeId IS NULL OR ID <> @excludeId)", conn);
+            cmd.Parameters.AddWithValue("@name", name);
+            cmd.Parameters.AddWithValue("@excludeId", (object?)excludeId ?? System.DBNull.Value);
+            return System.Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
         public int Add(PODStation station)
         {
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
             using var cmd = new SqlCommand("INSERT INTO PODStation (OSSPODStationId, Name) VALUES (@osspod, @name); SELECT CAST(SCOPE_IDENTITY() AS INT);", conn);
-            cmd.Parameters.AddWithValue("@osspod", (object?)station.OSSPODStationId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@osspod", (object?)station.OSSPODStationId ?? System.DBNull.Value);
             cmd.Parameters.AddWithValue("@name", station.Name);
-            var result = cmd.ExecuteScalar();
-            return Convert.ToInt32(result);
+            return System.Convert.ToInt32(cmd.ExecuteScalar());
         }
 
         public bool Update(PODStation station)
@@ -69,7 +81,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             conn.Open();
             using var cmd = new SqlCommand("UPDATE PODStation SET OSSPODStationId = @osspod, Name = @name WHERE ID = @id", conn);
             cmd.Parameters.AddWithValue("@id", station.ID);
-            cmd.Parameters.AddWithValue("@osspod", (object?)station.OSSPODStationId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@osspod", (object?)station.OSSPODStationId ?? System.DBNull.Value);
             cmd.Parameters.AddWithValue("@name", station.Name);
             return cmd.ExecuteNonQuery() > 0;
         }

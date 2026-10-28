@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using SalesHierarchy.Web.Data;
+using SalesHierarchy.Web.Services;
 using SalesHierarchy.Web.ViewModels;
 
 namespace SalesHierarchy.Web.Controllers
@@ -11,12 +12,14 @@ namespace SalesHierarchy.Web.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailSender _emailSender;
+        private readonly AuditService _audit;
 
-        public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IEmailSender emailSender)
+        public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IEmailSender emailSender, AuditService audit)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
+            _audit = audit;
         }
 
         [HttpGet]
@@ -110,6 +113,7 @@ namespace SalesHierarchy.Web.Controllers
             var result = await _userManager.ResetPasswordAsync(user, model.Token, model.Password);
             if (result.Succeeded)
             {
+                _audit.Record("PasswordSet", "UserAccount", user.Id, $"Password set for {user.Email} via an invitation or reset link.", new { user.Email }, user.Email);
                 return RedirectToAction("ResetPasswordConfirmation");
             }
             foreach (var error in result.Errors)

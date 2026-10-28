@@ -2,12 +2,39 @@
 @{
     ViewData["Title"] = "My Dealers";
 }
-<h2>My Dealers</h2>
-<table class="table">
-    <thead><tr><th>Name</th><th>Code</th></tr></thead>
-    <tbody>
-    @foreach(var d in Model){
-        <tr><td>@d.Name</td><td>@d.Code</td></tr>
-    }
-    </tbody>
-</table>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">My Dealers</h1>
+        <p class="page-subtitle">Dealers mapped to you.</p>
+    </div>
+</div>
+
+<div class="card-clean">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-shop"></i>
+                <div class="fw-semibold">No dealers mapped</div>
+                <div class="text-hint small">No dealer assignments have been created for you yet.</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead><tr><th>Dealer</th><th>Code</th></tr></thead>
+                    <tbody>
+                    @foreach (var dealer in Model)
+                    {
+                        <tr>
+                            <td class="fw-medium">@dealer.Name</td>
+                            <td class="mono text-hint">@(string.IsNullOrWhiteSpace(dealer.Code) ? "—" : dealer.Code)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

@@ -1,29 +1,130 @@
-﻿@model System.Collections.Generic.List<SalesHierarchy.Web.Data.ApplicationUser>
-@using SalesHierarchy.Web.Data
+﻿@model List<SalesHierarchy.Web.ViewModels.UserAccountRow>
 @{
-    ViewData["Title"] = "User Account Management";
+    ViewData["Title"] = "User Accounts";
+    var pending = Model.Count(u => u.Status == "Invitation pending");
 }
-<h2>User Account Management</h2>
-@if(TempData["Message"] != null){ <div>@TempData["Message"]</div> }
-<table class="table">
-    <thead><tr><th>Email</th><th>UserName</th><th>EmailConfirmed</th><th></th></tr></thead>
-    <tbody>
-    @foreach(var u in Model){
-        <tr>
-            <td>@u.Email</td>
-            <td>@u.UserName</td>
-            <td>@u.EmailConfirmed</td>
-            <td>
-                <form asp-action="ResendInvitation" method="post" style="display:inline">
-                    <input type="hidden" name="userId" value="@u.Id" />
-                    <button type="submit" class="btn btn-sm btn-secondary">Resend Invitation</button>
-                </form>
-                <form asp-action="DisableAccount" method="post" style="display:inline">
-                    <input type="hidden" name="userId" value="@u.Id" />
-                    <button type="submit" class="btn btn-sm btn-danger">Disable</button>
-                </form>
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">User Accounts</h1>
+        <p class="page-subtitle">Login access, invitation status, and account state.</p>
+    </div>
+    <a asp-action="CreateSalesPersonAccount" class="btn btn-brand"><i class="bi bi-person-plus me-1"></i>Create account</a>
+</div>
+
+@if (pending > 0)
+{
+    <div class="alert alert-info border-0">
+        <i class="bi bi-envelope me-1"></i>
+        @pending account(s) have not completed password setup yet. Resend an invitation if they did not receive the e-mail.
+    </div>
+}
+
+<div class="card-clean">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Accounts</span>
+        <span class="text-hint small">@Model.Count account(s)</span>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="bi bi-shield-lock"></i>
+                <div class="fw-semibold">No accounts yet</div>
+                <div class="text-hint small">Create an individual salesperson account or use the Excel bulk upload.</div>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean mb-0">
+                    <thead>
+                        <tr><th>Email</th><th>Linked salesperson</th><th>Status</th><th>Email confirmed</th><th class="text-end">Actions</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var row in Model)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="avatar-initials">@(string.IsNullOrWhiteSpace(row.User.Email) ? "?" : row.User.Email.Trim()[..1].ToUpperInvariant())</span>
+                                    <div>
+                                        <div class="fw-medium">@row.User.Email</div>
+                                        <div class="text-hint small mono">@row.User.Id</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (row.User.SalesPersonId.HasValue)
+                                {
+                                    <a asp-action="DetailsSalesPerson" asp-route-id="@row.User.SalesPersonId.Value" class="link-subtle">
+                                        @(row.SalesPersonName ?? $"SalesPerson #{row.User.SalesPersonId}")
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="badge-soft-neutral">System account</span>
+                                }
+                            </td>
+                            <td>
+                                @if (row.IsDisabled)
+                                {
+                                    <span class="badge-soft-danger">Disabled</span>
+                                }
+                                else if (row.HasPassword)
+                                {
+                                    <span class="badge-soft-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-soft-warning">Invitation pending</span>
+                                }
+                            </td>
+                            <td>
+                                @if (row.User.EmailConfirmed)
+                                {
+                                    <i class="bi bi-check-circle text-success"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-x-circle text-muted"></i>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <form asp-action="ResendInvitation" method="post" class="d-inline">
+                                    <input type="hidden" name="userId" value="@row.User.Id" />
+                                    <button type="submit" class="btn btn-sm btn-ghost" title="Resend invitation"><i class="bi bi-envelope"></i></button>
+                                </form>
+                                @if (row.IsDisabled)
+                                {
+                                    <form asp-action="EnableAccount" method="post" class="d-inline">
+                                        <input type="hidden" name="userId" value="@row.User.Id" />
+                                        <button type="submit" class="btn btn-sm btn-ghost text-success" title="Enable account"><i class="bi bi-unlock"></i></button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form asp-action="DisableAccount" method="post" class="d-inline">
+                                        <input type="hidden" name="userId" value="@row.User.Id" />
+                                        <button type="submit" class="btn btn-sm btn-ghost text-danger" title="Disable account"><i class="bi bi-lock"></i></button>
+                                    </form>
+                                }
+                                @if (!row.User.SalesPersonId.HasValue)
+                                {
+                                    <span class="badge-soft-neutral">System</span>
+                                }
+                                else
+                                {
+                                    <form asp-action="DeleteAccount" method="post" class="d-inline" onsubmit="return confirm('Delete this login account permanently? The salesperson business record and its dependencies remain.');">
+                                        <input type="hidden" name="userId" value="@row.User.Id" />
+                                        <button type="submit" class="btn btn-sm btn-ghost text-danger" title="Delete account"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

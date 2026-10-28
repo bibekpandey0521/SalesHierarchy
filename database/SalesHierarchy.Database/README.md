@@ -4,9 +4,21 @@
 SQL Server Database Project for schema management and DACPAC deployment.
 
 ## Structure
-- Tables/ - Table definitions (PODStation, SalesPerson, POD, Dealer, salesdealermapping)
+- Tables/ - Table definitions (PODStation, SalesPerson, POD, Dealer, salesdealermapping, AuditLog)
 - StoredProcedures/ - Stored procedure definitions (if added)
 - Scripts/ - Post-deployment scripts (if needed)
+
+Identity tables (`AspNetUsers`, `AspNetRoles`, ...) are managed by EF Core migrations in `src/SalesHierarchy.Web/Data/Migrations`, not by this project.
+
+## Local setup
+From the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\database\Setup-LocalDb.ps1 -SeedDemoData
+dotnet ef database update --project src/SalesHierarchy.Web
+```
+
+Use `-Server "(localdb)\MSSQLLocalDB"` for LocalDB. The script is idempotent and never drops data. `Seed-DemoData.sql` only inserts into empty tables.
 
 ## Schema Notes
 - Preserves existing primary keys, foreign keys, unique constraints

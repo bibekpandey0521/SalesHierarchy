@@ -10,6 +10,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
     public class SalesPersonRepository : ISalesPersonRepository
     {
         private readonly SqlConnectionFactory _factory;
+
         public SalesPersonRepository(SqlConnectionFactory factory)
         {
             _factory = factory;
@@ -20,17 +21,11 @@ namespace SalesHierarchy.Infrastructure.Repositories
             var list = new List<SalesPerson>();
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
-            using var cmd = new SqlCommand("SELECT ID, Name, Designation, ManagerId FROM SalesPerson", conn);
+            using var cmd = new SqlCommand("SELECT ID, Name, Designation, ManagerId FROM SalesPerson ORDER BY Name", conn);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                list.Add(new SalesPerson
-                {
-                    ID = (int)reader["ID"],
-                    Name = reader["Name"].ToString() ?? string.Empty,
-                    Designation = reader["Designation"] as string,
-                    ManagerId = reader["ManagerId"] == DBNull.Value ? null : (int)reader["ManagerId"]
-                });
+                list.Add(Map(reader));
             }
             return list;
         }
@@ -42,17 +37,31 @@ namespace SalesHierarchy.Infrastructure.Repositories
             using var cmd = new SqlCommand("SELECT ID, Name, Designation, ManagerId FROM SalesPerson WHERE ID = @id", conn);
             cmd.Parameters.AddWithValue("@id", id);
             using var reader = cmd.ExecuteReader();
-            if (reader.Read())
+            return reader.Read() ? Map(reader) : null;
+        }
+
+        public IEnumerable<SalesPerson> GetDirectReports(int managerId)
+        {
+            var list = new List<SalesPerson>();
+            using var conn = (SqlConnection)_factory.CreateConnection();
+            conn.Open();
+            using var cmd = new SqlCommand("SELECT ID, Name, Designation, ManagerId FROM SalesPerson WHERE ManagerId = @managerId ORDER BY Name", conn);
+            cmd.Parameters.AddWithValue("@managerId", managerId);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
-                return new SalesPerson
-                {
-                    ID = (int)reader["ID"],
-                    Name = reader["Name"].ToString() ?? string.Empty,
-                    Designation = reader["Designation"] as string,
-                    ManagerId = reader["ManagerId"] == DBNull.Value ? null : (int)reader["ManagerId"]
-                };
+                list.Add(Map(reader));
             }
-            return null;
+            return list;
+        }
+
+        public bool HasSubordinates(int salesPersonId)
+        {
+            using var conn = (SqlConnection)_factory.CreateConnection();
+            conn.Open();
+            using var cmd = new SqlCommand("SELECT COUNT(1) FROM SalesPerson WHERE ManagerId = @id", conn);
+            cmd.Parameters.AddWithValue("@id", salesPersonId);
+            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
         }
 
         public int Add(SalesPerson person)
@@ -63,8 +72,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             cmd.Parameters.AddWithValue("@name", person.Name);
             cmd.Parameters.AddWithValue("@designation", (object?)person.Designation ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@managerId", (object?)person.ManagerId ?? DBNull.Value);
-            var result = cmd.ExecuteScalar();
-            return Convert.ToInt32(result);
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
         public bool Update(SalesPerson person)
@@ -88,25 +96,15 @@ namespace SalesHierarchy.Infrastructure.Repositories
             return cmd.ExecuteNonQuery() > 0;
         }
 
-        public IEnumerable<SalesPerson> GetDirectReports(int managerId)
+        private static SalesPerson Map(SqlDataReader reader)
         {
-            var list = new List<SalesPerson>();
-            using var conn = (SqlConnection)_factory.CreateConnection();
-            conn.Open();
-            using var cmd = new SqlCommand("SELECT ID, Name, Designation, ManagerId FROM SalesPerson WHERE ManagerId = @managerId", conn);
-            cmd.Parameters.AddWithValue("@managerId", managerId);
-            using var reader = cmd.ExecuteReader();
-            while (reader.Read())
+            return new SalesPerson
             {
-                list.Add(new SalesPerson
-                {
-                    ID = (int)reader["ID"],
-                    Name = reader["Name"].ToString() ?? string.Empty,
-                    Designation = reader["Designation"] as string,
-                    ManagerId = managerId
-                });
-            }
-            return list;
+                ID = (int)reader["ID"],
+                Name = reader["Name"].ToString() ?? string.Empty,
+                Designation = reader["Designation"] as string,
+                ManagerId = reader["ManagerId"] == DBNull.Value ? null : (int)reader["ManagerId"]
+            };
         }
     }
 }

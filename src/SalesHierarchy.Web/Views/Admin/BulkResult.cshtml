@@ -1,0 +1,119 @@
+@model SalesHierarchy.Web.Services.BulkUploadBatch
+@{
+    ViewData["Title"] = "Upload results";
+    var imported = Model.Rows.Count(r => r.Status == SalesHierarchy.Web.Services.BulkRowStatus.Imported);
+    var failed = Model.Rows.Count(r => r.Status == SalesHierarchy.Web.Services.BulkRowStatus.Failed);
+    var skipped = Model.Rows.Count(r => r.Status == SalesHierarchy.Web.Services.BulkRowStatus.Duplicate || r.Status == SalesHierarchy.Web.Services.BulkRowStatus.Invalid);
+    var invitationsSent = Model.Rows.Count(r => r.InvitationStatus == "Sent");
+    var invitationsPending = imported - invitationsSent;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Upload results</h1>
+        <p class="page-subtitle">@Model.FileName</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="DownloadErrorReport" asp-route-key="@Model.Key" class="btn btn-ghost"><i class="bi bi-download me-1"></i>Download results</a>
+        <a asp-action="BulkUpload" class="btn btn-brand">Upload another file</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-label">Imported</div>
+            <div class="stat-value text-success">@imported</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-label">Failed</div>
+            <div class="stat-value text-danger">@failed</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-label">Skipped</div>
+            <div class="stat-value">@skipped</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-label">Invitations sent</div>
+            <div class="stat-value">@invitationsSent</div>
+            @if (invitationsPending > 0)
+            {
+                <div class="stat-hint text-warning">@invitationsPending pending — resend from User Accounts</div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (invitationsPending > 0)
+{
+    <div class="alert alert-warning border-0">
+        <i class="bi bi-envelope-exclamation me-1"></i>
+        @invitationsPending account(s) were created but the invitation e-mail could not be sent. Configure e-mail delivery, then use
+        <a asp-action="UserAccountManagement" class="alert-link">User Accounts</a> to resend the invitation. No passwords were shared.
+    </div>
+}
+
+<div class="card-clean">
+    <div class="card-header">Row outcomes</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-clean mb-0">
+                <thead>
+                    <tr><th>Row</th><th>Name</th><th>Email</th><th>Status</th><th>Invitation</th><th>Details</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Rows.OrderBy(r => r.RowNumber))
+                {
+                    <tr>
+                        <td class="text-hint mono">@row.RowNumber</td>
+                        <td class="fw-medium">@row.Name</td>
+                        <td class="mono small">@row.Email</td>
+                        <td>
+                            @switch (row.Status)
+                            {
+                                case SalesHierarchy.Web.Services.BulkRowStatus.Imported:
+                                    <span class="badge-soft-success">Imported</span>
+                                    break;
+                                case SalesHierarchy.Web.Services.BulkRowStatus.Failed:
+                                    <span class="badge-soft-danger">Failed</span>
+                                    break;
+                                case SalesHierarchy.Web.Services.BulkRowStatus.Duplicate:
+                                    <span class="badge-soft-warning">Skipped (duplicate)</span>
+                                    break;
+                                default:
+                                    <span class="badge-soft-neutral">@row.Status</span>
+                                    break;
+                            }
+                        </td>
+                        <td class="small">
+                            @if (string.IsNullOrEmpty(row.InvitationStatus))
+                            {
+                                <span class="text-hint">—</span>
+                            }
+                            else if (row.InvitationStatus == "Sent")
+                            {
+                                <span class="badge-soft-success">Sent</span>
+                            }
+                            else
+                            {
+                                <span class="badge-soft-warning">Pending</span>
+                            }
+                        </td>
+                        <td class="small text-muted">
+                            @foreach (var message in row.Errors.Concat(row.Warnings))
+                            {
+                                <div><i class="bi bi-info-circle me-1"></i>@message</div>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,13 +1,92 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
+@using SalesHierarchy.Core.Models
 @{
     ViewData["Title"] = "Reporting Hierarchy";
+    var current = ViewBag.Current as SalesPerson;
+    var managerChain = ViewBag.ManagerChain as IReadOnlyList<SalesPerson> ?? new List<SalesPerson>();
+    var people = ViewBag.People as Dictionary<int, SalesPerson> ?? new Dictionary<int, SalesPerson>();
 }
-<h2>Reporting Hierarchy</h2>
-<table class="table">
-    <thead><tr><th>Name</th><th>Designation</th><th>ManagerId</th></tr></thead>
-    <tbody>
-    @foreach(var s in Model){
-        <tr><td>@s.Name</td><td>@s.Designation</td><td>@s.ManagerId</td></tr>
-    }
-    </tbody>
-</table>
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Reporting Hierarchy</h1>
+        <p class="page-subtitle">Your reporting line and everyone below you.</p>
+    </div>
+    <a asp-action="MyTeam" class="btn btn-ghost">View team</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card-clean">
+            <div class="card-header">Above you</div>
+            <div class="card-body">
+                @if (managerChain.Count == 0)
+                {
+                    <p class="text-hint small mb-0">You are at the top of the hierarchy.</p>
+                }
+                else
+                {
+                    <ol class="chain-list mb-0">
+                        @foreach (var manager in managerChain)
+                        {
+                            <li><span>@manager.Name</span><span class="text-hint small">@manager.Designation</span></li>
+                        }
+                    </ol>
+                }
+            </div>
+        </div>
+
+        @if (current != null)
+        {
+            <div class="card-clean mt-3">
+                <div class="card-header">You</div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="avatar-initials">@(string.IsNullOrWhiteSpace(current.Name) ? "?" : current.Name.Trim()[..1].ToUpperInvariant())</span>
+                        <div>
+                            <div class="fw-semibold">@current.Name</div>
+                            <div class="text-hint small">@(string.IsNullOrWhiteSpace(current.Designation) ? "Salesperson" : current.Designation)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card-clean">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Below you</span>
+                <span class="badge-soft-neutral">@Model.Count()</span>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.Any())
+                {
+                    <div class="empty-state py-4">
+                        <i class="bi bi-diagram-3"></i>
+                        <div class="text-hint small">No reports below you.</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-clean mb-0">
+                            <thead><tr><th>Name</th><th>Designation</th><th>Reports to</th></tr></thead>
+                            <tbody>
+                            @foreach (var member in Model)
+                            {
+                                <tr>
+                                    <td class="fw-medium">@member.Name</td>
+                                    <td class="text-hint">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
+                                    <td class="text-hint">
+                                        @(member.ManagerId.HasValue && people.TryGetValue(member.ManagerId.Value, out var manager) ? manager.Name : "—")
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
