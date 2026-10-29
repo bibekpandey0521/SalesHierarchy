@@ -4,67 +4,128 @@
     var stations = ViewBag.Stations as Dictionary<int, SalesHierarchy.Core.Models.PODStation> ?? new Dictionary<int, SalesHierarchy.Core.Models.PODStation>();
     var people = ViewBag.People as Dictionary<int, SalesHierarchy.Core.Models.SalesPerson> ?? new Dictionary<int, SalesHierarchy.Core.Models.SalesPerson>();
     var query = ViewBag.Query as string;
+    var pods = Model.ToList();
+    var assignedCount = pods.Count(p => p.salespersonId.HasValue);
 }
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/hierarchy.css" asp-append-version="true" />
+}
+
 <div class="page-head">
     <div>
         <h1 class="page-title">PODs</h1>
-        <p class="page-subtitle">Points of distribution and their salesperson assignments.</p>
+        <p class="page-subtitle">Points of distribution, their stations, and salesperson assignments.</p>
     </div>
-    <a asp-action="CreatePOD" class="btn btn-brand"><i class="bi bi-plus-lg me-1"></i>New POD</a>
+    <a asp-action="CreatePOD" class="btn btn-brand"><i class="bi bi-plus-lg"></i>New POD</a>
 </div>
 
-<div class="card-clean">
-    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
-        <form method="get" class="d-flex gap-2">
-            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search POD, station, or salesperson..." />
-            <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search"></i></button>
-        </form>
-        <span class="text-hint small">@Model.Count() POD(s)</span>
+<div class="summary-row">
+    <div class="summary-tile">
+        <div class="summary-tile-label">Total PODs</div>
+        <div class="summary-tile-value">@pods.Count</div>
+        <div class="summary-tile-hint">In the network</div>
     </div>
-    <div class="card-body p-0">
-        @if (!Model.Any())
-        {
-            <div class="empty-state">
-                <i class="bi bi-geo-alt"></i>
-                <div class="fw-semibold">No PODs found</div>
-                <div class="text-hint small">Create a POD and assign it to a station and salesperson.</div>
-                <a asp-action="CreatePOD" class="btn btn-brand btn-sm mt-2">Create POD</a>
-            </div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-clean mb-0">
-                    <thead>
-                        <tr><th>POD</th><th>OSS POD Id</th><th>Station</th><th>Salesperson</th><th class="text-end">Actions</th></tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var pod in Model)
-                    {
-                        <tr>
-                            <td class="fw-medium">@pod.Name</td>
-                            <td class="text-hint mono">@(string.IsNullOrWhiteSpace(pod.OSSPODID) ? "—" : pod.OSSPODID)</td>
-                            <td>@(stations.TryGetValue(pod.PODStationId, out var station) ? station.Name : "—")</td>
-                            <td>
-                                @if (pod.salespersonId.HasValue && people.TryGetValue(pod.salespersonId.Value, out var person))
-                                {
-                                    <a asp-action="DetailsSalesPerson" asp-route-id="@person.ID" class="link-subtle">@person.Name</a>
-                                }
-                                else
-                                {
-                                    <span class="badge-soft-neutral">Unassigned</span>
-                                }
-                            </td>
-                            <td class="text-end text-nowrap">
-                                <a asp-action="DetailsPOD" asp-route-id="@pod.ID" class="btn btn-sm btn-ghost" title="Details"><i class="bi bi-eye"></i></a>
-                                <a asp-action="EditPOD" asp-route-id="@pod.ID" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
-                                <a asp-action="DeletePOD" asp-route-id="@pod.ID" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        }
+    <div class="summary-tile">
+        <div class="summary-tile-label">Assigned</div>
+        <div class="summary-tile-value">@assignedCount</div>
+        <div class="summary-tile-hint">With a salesperson</div>
+    </div>
+    <div class="summary-tile">
+        <div class="summary-tile-label">Unassigned</div>
+        <div class="summary-tile-value">@(pods.Count - assignedCount)</div>
+        <div class="summary-tile-hint">Needs an owner</div>
+    </div>
+    <div class="summary-tile">
+        <div class="summary-tile-label">Stations</div>
+        <div class="summary-tile-value">@stations.Count</div>
+        <div class="summary-tile-hint">Distinct locations</div>
     </div>
 </div>
+
+<div class="toolbar-card">
+    <form method="get" class="toolbar-search">
+        <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search POD, station, or salesperson..." />
+        <button type="submit" class="btn btn-ghost btn-sm" aria-label="Search PODs"><i class="bi bi-search"></i></button>
+        @if (!string.IsNullOrWhiteSpace(query))
+        {
+            <a asp-action="PODs" class="btn btn-ghost btn-sm">Clear</a>
+        }
+    </form>
+    <div class="toolbar-meta">
+        <span>@pods.Count POD(s)</span>
+        <span class="toolbar-divider"></span>
+        <div class="segmented" aria-label="POD layout">
+            <button type="button" class="active" aria-pressed="true" data-view-toggle data-view-target="#podCollection" data-view-mode="grid">Cards</button>
+            <button type="button" aria-pressed="false" data-view-toggle data-view-target="#podCollection" data-view-mode="list">List</button>
+        </div>
+    </div>
+</div>
+
+@if (pods.Count == 0)
+{
+    <div class="card-clean">
+        <div class="empty-state">
+            <i class="bi bi-geo-alt"></i>
+            <div class="fw-semibold">No PODs found</div>
+            <div class="text-hint small">Create a POD and assign it to a station and salesperson.</div>
+            <a asp-action="CreatePOD" class="btn btn-brand btn-sm mt-2">Create POD</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="pod-grid" id="podCollection">
+        @foreach (var pod in pods)
+        {
+            var stationName = stations.TryGetValue(pod.PODStationId, out var station) ? station.Name : "Unassigned station";
+            var hasOwner = pod.salespersonId.HasValue && people.TryGetValue(pod.salespersonId.Value, out var person);
+            people.TryGetValue(pod.salespersonId ?? 0, out var owner);
+
+            <article class="pod-card">
+                <div class="pod-card-head">
+                    <div>
+                        <h2 class="pod-card-title">@pod.Name</h2>
+                        <span class="pod-card-code">@(string.IsNullOrWhiteSpace(pod.OSSPODID) ? "No OSS ID" : pod.OSSPODID)</span>
+                    </div>
+                    <span class="pod-card-icon"><i class="bi bi-geo-alt"></i></span>
+                </div>
+
+                <div class="pod-card-body">
+                    <div class="pod-card-row">
+                        <i class="bi bi-building"></i>
+                        <span>@stationName</span>
+                    </div>
+                    <div class="pod-card-row">
+                        @if (hasOwner)
+                        {
+                            <span class="avatar-initials">@(string.IsNullOrWhiteSpace(owner!.Name) ? "?" : owner.Name.Trim()[..1].ToUpperInvariant())</span>
+                            <a asp-action="DetailsSalesPerson" asp-route-id="@owner.ID" class="link-subtle">@owner.Name</a>
+                        }
+                        else
+                        {
+                            <span class="avatar-initials">?</span>
+                            <span>Unassigned</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="pod-card-foot">
+                    @if (hasOwner)
+                    {
+                        <span class="badge-soft badge-soft-success">Assigned</span>
+                    }
+                    else
+                    {
+                        <span class="badge-soft badge-soft-neutral">Unassigned</span>
+                    }
+                    <div class="pod-card-actions">
+                        <a asp-action="DetailsPOD" asp-route-id="@pod.ID" class="btn btn-sm btn-ghost" title="Details"><i class="bi bi-eye"></i></a>
+                        <a asp-action="EditPOD" asp-route-id="@pod.ID" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
+                        <a asp-action="DeletePOD" asp-route-id="@pod.ID" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+}

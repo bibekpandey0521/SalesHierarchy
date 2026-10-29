@@ -1,8 +1,13 @@
 ﻿@model SalesHierarchy.Core.Models.SalesPerson?
 @{
-    ViewData["Title"] = "My Dashboard";
+    ViewData["Title"] = "My workspace";
     var manager = ViewBag.Manager as SalesHierarchy.Core.Models.SalesPerson;
 }
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+}
+
 @if (Model == null)
 {
     <div class="card-clean">
@@ -17,97 +22,133 @@ else
 {
     <div class="page-head">
         <div>
-            <h1 class="page-title">Welcome, @Model.Name</h1>
+            <h1 class="page-title">Welcome back, @Model.Name</h1>
             <p class="page-subtitle">@(string.IsNullOrWhiteSpace(Model.Designation) ? "Salesperson" : Model.Designation)@(manager != null ? $" · reports to {manager.Name}" : " · top level")</p>
         </div>
-        <a asp-action="ReportingHierarchy" class="btn btn-ghost"><i class="bi bi-diagram-3 me-1"></i>View hierarchy</a>
-    </div>
-
-    <div class="row g-3 mb-3">
-        <div class="col-sm-4">
-            <div class="stat-card">
-                <div class="stat-label">My PODs</div>
-                <div class="stat-value">@ViewBag.PodCount</div>
-                <a asp-action="MyPODs" class="stat-link">View PODs <i class="bi bi-arrow-right"></i></a>
-            </div>
-        </div>
-        <div class="col-sm-4">
-            <div class="stat-card">
-                <div class="stat-label">My dealers</div>
-                <div class="stat-value">@ViewBag.DealerCount</div>
-                <a asp-action="MyDealers" class="stat-link">View dealers <i class="bi bi-arrow-right"></i></a>
-            </div>
-        </div>
-        <div class="col-sm-4">
-            <div class="stat-card">
-                <div class="stat-label">Team members</div>
-                <div class="stat-value">@ViewBag.TeamCount</div>
-                <a asp-action="MyTeam" class="stat-link">View team <i class="bi bi-arrow-right"></i></a>
-            </div>
+        <div class="page-actions">
+            <a asp-action="MyProfile" class="btn btn-ghost"><i class="bi bi-person"></i>My profile</a>
+            <a asp-action="ReportingHierarchy" class="btn btn-brand"><i class="bi bi-diagram-3"></i>View hierarchy</a>
         </div>
     </div>
 
-    <div class="card-clean">
-        <div class="card-header">Quick actions</div>
-        <div class="card-body">
-            <div class="quick-grid">
-                <a asp-action="MyProfile" class="quick-link">
-                    <i class="bi bi-person"></i>
+    <div class="metric-grid is-three">
+        <article class="metric-card">
+            <div class="metric-card-top">
+                <span class="metric-label">My PODs</span>
+                <span class="metric-icon"><i class="bi bi-geo-alt"></i></span>
+            </div>
+            <div class="metric-value">@ViewBag.PodCount</div>
+            <div class="metric-meta">
+                <span class="metric-delta is-neutral">Live</span>
+                <span class="metric-hint">assigned points of distribution</span>
+            </div>
+        </article>
+        <article class="metric-card">
+            <div class="metric-card-top">
+                <span class="metric-label">My dealers</span>
+                <span class="metric-icon"><i class="bi bi-shop"></i></span>
+            </div>
+            <div class="metric-value">@ViewBag.DealerCount</div>
+            <div class="metric-meta">
+                <span class="metric-delta is-neutral">Live</span>
+                <span class="metric-hint">mapped dealer records</span>
+            </div>
+        </article>
+        <article class="metric-card">
+            <div class="metric-card-top">
+                <span class="metric-label">Team members</span>
+                <span class="metric-icon"><i class="bi bi-people"></i></span>
+            </div>
+            <div class="metric-value">@ViewBag.TeamCount</div>
+            <div class="metric-meta">
+                <span class="metric-delta is-neutral">Live</span>
+                <span class="metric-hint">people in your reporting line</span>
+            </div>
+        </article>
+    </div>
+
+    <div class="dashboard-grid">
+        <section class="dashboard-card">
+            <div class="dashboard-card-head">
+                <div>
+                    <h2 class="dashboard-card-title">Quick actions</h2>
+                    <p class="dashboard-card-subtitle">Manage your profile, team, and assignments</p>
+                </div>
+            </div>
+            <div class="dashboard-card-body">
+                <div class="quick-grid">
+                    <a asp-action="MyDealers" class="quick-link">
+                        <i class="bi bi-shop"></i>
+                        <div>
+                            <div class="fw-semibold">My dealers</div>
+                            <div class="text-hint">Dealers mapped to you</div>
+                        </div>
+                    </a>
+                    <a asp-action="MyTeam" class="quick-link">
+                        <i class="bi bi-people"></i>
+                        <div>
+                            <div class="fw-semibold">Team management</div>
+                            <div class="text-hint">Add, edit, and manage reports</div>
+                        </div>
+                    </a>
+                    <a asp-action="TeamAccounts" class="quick-link">
+                        <i class="bi bi-shield-lock"></i>
+                        <div>
+                            <div class="fw-semibold">Team accounts</div>
+                            <div class="text-hint">Invite, resend, disable, or remove</div>
+                        </div>
+                    </a>
+                    <a asp-action="TeamPODs" class="quick-link">
+                        <i class="bi bi-geo-alt"></i>
+                        <div>
+                            <div class="fw-semibold">Team PODs</div>
+                            <div class="text-hint">Reassign PODs within your team</div>
+                        </div>
+                    </a>
+                    <a asp-action="TeamDealerAssignments" class="quick-link">
+                        <i class="bi bi-diagram-2"></i>
+                        <div>
+                            <div class="fw-semibold">Team dealer assignments</div>
+                            <div class="text-hint">Manage dealer mappings</div>
+                        </div>
+                    </a>
+                    <a asp-action="TeamActivity" class="quick-link">
+                        <i class="bi bi-clock-history"></i>
+                        <div>
+                            <div class="fw-semibold">Team activity</div>
+                            <div class="text-hint">History for you and your team</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="dashboard-card">
+            <div class="dashboard-card-head">
+                <div>
+                    <h2 class="dashboard-card-title">Reporting line</h2>
+                    <p class="dashboard-card-subtitle">Where you sit in the organization</p>
+                </div>
+            </div>
+            <div class="dashboard-card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="avatar-initials avatar-initials-lg">@(string.IsNullOrWhiteSpace(Model.Name) ? "?" : Model.Name.Trim()[..1].ToUpperInvariant())</span>
                     <div>
-                        <div class="fw-semibold">My profile</div>
-                        <div class="text-hint small">Your designation, manager, and direct reports</div>
+                        <div class="fw-semibold">@Model.Name</div>
+                        <div class="text-muted small">@(string.IsNullOrWhiteSpace(Model.Designation) ? "Salesperson" : Model.Designation)</div>
                     </div>
-                </a>
-                <a asp-action="MyDealers" class="quick-link">
-                    <i class="bi bi-shop"></i>
-                    <div>
-                        <div class="fw-semibold">My dealers</div>
-                        <div class="text-hint small">Dealers mapped to you</div>
-                    </div>
-                </a>
-                <a asp-action="MyTeam" class="quick-link">
-                    <i class="bi bi-people"></i>
-                    <div>
-                        <div class="fw-semibold">Team management</div>
-                        <div class="text-hint small">Add, edit, and manage your reporting line</div>
-                    </div>
-                </a>
-                <a asp-action="TeamAccounts" class="quick-link">
-                    <i class="bi bi-shield-lock"></i>
-                    <div>
-                        <div class="fw-semibold">Team accounts</div>
-                        <div class="text-hint small">Invite, resend, disable, or remove logins</div>
-                    </div>
-                </a>
-                <a asp-action="TeamPODs" class="quick-link">
-                    <i class="bi bi-geo-alt"></i>
-                    <div>
-                        <div class="fw-semibold">Team PODs</div>
-                        <div class="text-hint small">Reassign PODs within your team</div>
-                    </div>
-                </a>
-                <a asp-action="TeamDealerAssignments" class="quick-link">
-                    <i class="bi bi-diagram-2"></i>
-                    <div>
-                        <div class="fw-semibold">Team dealer assignments</div>
-                        <div class="text-hint small">Manage dealer mappings within your team</div>
-                    </div>
-                </a>
-                <a asp-action="TeamActivity" class="quick-link">
-                    <i class="bi bi-clock-history"></i>
-                    <div>
-                        <div class="fw-semibold">Team activity</div>
-                        <div class="text-hint small">History for you and your team</div>
-                    </div>
-                </a>
-                <a asp-action="ReportingHierarchy" class="quick-link">
-                    <i class="bi bi-diagram-3"></i>
-                    <div>
-                        <div class="fw-semibold">Reporting hierarchy</div>
-                        <div class="text-hint small">Your position and everyone below you</div>
-                    </div>
+                </div>
+                <hr class="hr-soft" />
+                <dl class="detail-list mb-0">
+                    <dt>Reports to</dt>
+                    <dd>@(manager?.Name ?? "Top level")</dd>
+                    <dt>Direct team</dt>
+                    <dd>@ViewBag.TeamCount member(s)</dd>
+                </dl>
+                <a asp-action="ReportingHierarchy" class="btn btn-ghost w-100 mt-3">
+                    <i class="bi bi-diagram-3"></i>Open hierarchy
                 </a>
             </div>
-        </div>
+        </section>
     </div>
 }

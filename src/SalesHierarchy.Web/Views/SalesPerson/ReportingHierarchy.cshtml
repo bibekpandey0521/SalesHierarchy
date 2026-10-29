@@ -1,92 +1,170 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
 @using SalesHierarchy.Core.Models
+@using SalesHierarchy.Web.ViewModels
 @{
-    ViewData["Title"] = "Reporting Hierarchy";
+    ViewData["Title"] = "Reporting hierarchy";
     var current = ViewBag.Current as SalesPerson;
     var managerChain = ViewBag.ManagerChain as IReadOnlyList<SalesPerson> ?? new List<SalesPerson>();
     var people = ViewBag.People as Dictionary<int, SalesPerson> ?? new Dictionary<int, SalesPerson>();
+    var reports = Model.ToList();
+    var childrenByManager = reports
+        .Where(p => p.ManagerId.HasValue)
+        .GroupBy(p => p.ManagerId!.Value)
+        .ToDictionary(g => g.Key, g => g.OrderBy(p => p.Name).ToList());
+    var directReportCount = current == null ? 0 : reports.Count(p => p.ManagerId == current.ID);
+
+    HierarchyNode BuildNode(SalesPerson person, HashSet<int> path)
+    {
+        var node = new HierarchyNode
+        {
+            Person = person,
+            IsCurrent = current != null && person.ID == current.ID
+        };
+
+        if (!path.Add(person.ID) || !childrenByManager.TryGetValue(person.ID, out var children))
+        {
+            return node;
+        }
+
+        node.Children = children.Select(child => BuildNode(child, new HashSet<int>(path))).ToList();
+        return node;
+    }
 }
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/hierarchy.css" asp-append-version="true" />
+}
+
 <div class="page-head">
     <div>
-        <h1 class="page-title">Reporting Hierarchy</h1>
-        <p class="page-subtitle">Your reporting line and everyone below you.</p>
+        <h1 class="page-title">Reporting hierarchy</h1>
+        <p class="page-subtitle">Your reporting line and everyone below you, grouped by direct reporting relationship.</p>
     </div>
-    <a asp-action="MyTeam" class="btn btn-ghost">View team</a>
+    <div class="page-actions">
+        <a asp-action="MyTeam" class="btn btn-ghost"><i class="bi bi-people"></i>View team</a>
+        <a asp-action="MyProfile" class="btn btn-brand"><i class="bi bi-person"></i>My profile</a>
+    </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-lg-5">
-        <div class="card-clean">
-            <div class="card-header">Above you</div>
+@if (current == null)
+{
+    <div class="card-clean">
+        <div class="empty-state">
+            <i class="bi bi-diagram-3"></i>
+            <div class="fw-semibold">Your account is not linked to a salesperson record</div>
+            <div class="text-hint small">Ask a System Administrator to link your account before viewing the hierarchy.</div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="summary-row">
+        <div class="summary-tile">
+            <div class="summary-tile-label">You</div>
+            <div class="summary-tile-value" style="font-size: 15px;">@current.Name</div>
+            <div class="summary-tile-hint">@(string.IsNullOrWhiteSpace(current.Designation) ? "Salesperson" : current.Designation)</div>
+        </div>
+        <div class="summary-tile">
+            <div class="summary-tile-label">Direct reports</div>
+            <div class="summary-tile-value">@directReportCount</div>
+            <div class="summary-tile-hint">Immediate team</div>
+        </div>
+        <div class="summary-tile">
+            <div class="summary-tile-label">Total below you</div>
+            <div class="summary-tile-value">@reports.Count</div>
+            <div class="summary-tile-hint">Direct and indirect</div>
+        </div>
+        <div class="summary-tile">
+            <div class="summary-tile-label">Reports to</div>
+            <div class="summary-tile-value" style="font-size: 15px;">@(managerChain.Count > 0 ? managerChain[^1].Name : "Top level")</div>
+            <div class="summary-tile-hint">@(managerChain.Count > 0 ? managerChain[^1].Designation : "Organization leadership")</div>
+        </div>
+    </div>
+
+    @if (managerChain.Count > 0)
+    {
+        <div class="card-clean mb-3">
+            <div class="card-header">
+                <span>Above you</span>
+                <span class="badge-count">@managerChain.Count level(s)</span>
+            </div>
             <div class="card-body">
-                @if (managerChain.Count == 0)
-                {
-                    <p class="text-hint small mb-0">You are at the top of the hierarchy.</p>
-                }
-                else
-                {
-                    <ol class="chain-list mb-0">
-                        @foreach (var manager in managerChain)
-                        {
-                            <li><span>@manager.Name</span><span class="text-hint small">@manager.Designation</span></li>
-                        }
-                    </ol>
-                }
+                <ol class="manager-chain">
+                    @foreach (var manager in managerChain)
+                    {
+                        <li>
+                            <span class="avatar-initials">@(string.IsNullOrWhiteSpace(manager.Name) ? "?" : manager.Name.Trim()[..1].ToUpperInvariant())</span>
+                            <span>
+                                <span class="fw-medium d-block">@manager.Name</span>
+                                <span class="text-muted small">@(string.IsNullOrWhiteSpace(manager.Designation) ? "Manager" : manager.Designation)</span>
+                            </span>
+                        </li>
+                    }
+                </ol>
             </div>
         </div>
+    }
 
-        @if (current != null)
-        {
-            <div class="card-clean mt-3">
-                <div class="card-header">You</div>
-                <div class="card-body">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="avatar-initials">@(string.IsNullOrWhiteSpace(current.Name) ? "?" : current.Name.Trim()[..1].ToUpperInvariant())</span>
-                        <div>
-                            <div class="fw-semibold">@current.Name</div>
-                            <div class="text-hint small">@(string.IsNullOrWhiteSpace(current.Designation) ? "Salesperson" : current.Designation)</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
+    <div class="toolbar-card">
+        <div class="toolbar-meta">
+            <span>@reports.Count person(s) below you</span>
+        </div>
+        <div class="segmented" aria-label="Hierarchy view">
+            <button type="button" class="active" aria-pressed="true" data-view-toggle data-view-target="#reportingTree" data-hide-target=".hierarchy-view">Tree</button>
+            <button type="button" aria-pressed="false" data-view-toggle data-view-target="#reportingTable" data-hide-target=".hierarchy-view">Table</button>
+        </div>
     </div>
 
-    <div class="col-lg-7">
+    <div class="tree-canvas hierarchy-view" id="reportingTree">
+        <div class="tree-root">
+            <partial name="_HierarchyNode" model="BuildNode(current, new HashSet<int>())" />
+        </div>
+    </div>
+
+    <div id="reportingTable" class="hierarchy-view" hidden>
         <div class="card-clean">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Below you</span>
-                <span class="badge-soft-neutral">@Model.Count()</span>
-            </div>
-            <div class="card-body p-0">
-                @if (!Model.Any())
-                {
-                    <div class="empty-state py-4">
-                        <i class="bi bi-diagram-3"></i>
-                        <div class="text-hint small">No reports below you.</div>
-                    </div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-clean mb-0">
-                            <thead><tr><th>Name</th><th>Designation</th><th>Reports to</th></tr></thead>
-                            <tbody>
-                            @foreach (var member in Model)
-                            {
-                                <tr>
-                                    <td class="fw-medium">@member.Name</td>
-                                    <td class="text-hint">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
-                                    <td class="text-hint">
-                                        @(member.ManagerId.HasValue && people.TryGetValue(member.ManagerId.Value, out var manager) ? manager.Name : "—")
-                                    </td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
-                    </div>
-                }
+            <div class="table-responsive">
+                <table class="table table-clean">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th>Reports to</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (reports.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">No reports below you.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var member in reports.OrderBy(p => p.Name))
+                        {
+                            <tr>
+                                <td>
+                                    <div class="employee-cell">
+                                        <span class="avatar-initials">@(string.IsNullOrWhiteSpace(member.Name) ? "?" : member.Name.Trim()[..1].ToUpperInvariant())</span>
+                                        <span class="employee-name">@member.Name</span>
+                                    </div>
+                                </td>
+                                <td class="text-muted">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
+                                <td class="text-muted">
+                                    @(member.ManagerId.HasValue && people.TryGetValue(member.ManagerId.Value, out var manager) ? manager.Name : "—")
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-</div>
+
+    <div class="tree-legend">
+        <span><span class="legend-dot is-brand"></span>Your position is highlighted</span>
+        <span><i class="bi bi-arrows-move"></i>Scroll horizontally on smaller screens</span>
+    </div>
+}

@@ -63,6 +63,60 @@ namespace SalesHierarchy.Web.Controllers
             return View();
         }
 
+        public IActionResult Hierarchy(string? q)
+        {
+            var allPeople = _salesPersonRepository.GetAll().ToList();
+            var people = allPeople;
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                people = allPeople
+                    .Where(p =>
+                        p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                        (p.Designation?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .ToList();
+            }
+
+            ViewBag.Query = q;
+            ViewBag.TotalPeople = allPeople.Count;
+            ViewBag.VisiblePeople = people.Count;
+            ViewBag.People = people;
+            ViewBag.PodCount = _podRepository.GetAll().Count();
+            ViewBag.PodStationCount = _podStationRepository.GetAll().Count();
+            ViewBag.Roots = BuildHierarchy(people);
+            return View();
+        }
+
+        private static List<HierarchyNode> BuildHierarchy(IReadOnlyCollection<SalesPerson> people)
+        {
+            var byId = people.ToDictionary(p => p.ID);
+            var childrenByManager = people
+                .Where(p => p.ManagerId.HasValue && byId.ContainsKey(p.ManagerId.Value))
+                .GroupBy(p => p.ManagerId!.Value)
+                .ToDictionary(g => g.Key, g => g.OrderBy(p => p.Name).ToList());
+
+            var roots = people
+                .Where(p => !p.ManagerId.HasValue || !byId.ContainsKey(p.ManagerId.Value))
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            var visited = new HashSet<int>();
+
+            HierarchyNode Build(SalesPerson person)
+            {
+                var node = new HierarchyNode { Person = person };
+                if (!visited.Add(person.ID) || !childrenByManager.TryGetValue(person.ID, out var children))
+                {
+                    return node;
+                }
+
+                node.Children = children.Select(Build).ToList();
+                return node;
+            }
+
+            return roots.Select(Build).ToList();
+        }
+
         // --------------------------------------------------------------- audit trail
 
         public IActionResult AuditLog(string? entity, string? actionFilter, string? q)

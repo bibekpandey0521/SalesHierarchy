@@ -1,0 +1,142 @@
+@using SalesHierarchy.Core.Models
+@using SalesHierarchy.Web.ViewModels
+@{
+    ViewData["Title"] = "Sales Hierarchy";
+    var roots = ViewBag.Roots as List<HierarchyNode> ?? new List<HierarchyNode>();
+    var people = ViewBag.People as List<SalesPerson> ?? new List<SalesPerson>();
+    var query = ViewBag.Query as string;
+    var peopleById = people.GroupBy(p => p.ID).ToDictionary(g => g.Key, g => g.First());
+    var directReportCounts = people
+        .Where(p => p.ManagerId.HasValue)
+        .GroupBy(p => p.ManagerId!.Value)
+        .ToDictionary(g => g.Key, g => g.Count());
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/hierarchy.css" asp-append-version="true" />
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Sales hierarchy</h1>
+        <p class="page-subtitle">Reporting lines from leadership down to station-level PODs. Expand any node to see direct reports.</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="SalesPersons" class="btn btn-ghost"><i class="bi bi-people"></i>Directory</a>
+        <a asp-action="CreateSalesPerson" class="btn btn-brand"><i class="bi bi-person-plus"></i>Add employee</a>
+    </div>
+</div>
+
+<div class="summary-row">
+    <div class="summary-tile">
+        <div class="summary-tile-label">People</div>
+        <div class="summary-tile-value">@ViewBag.TotalPeople</div>
+        <div class="summary-tile-hint">In the organization</div>
+    </div>
+    <div class="summary-tile">
+        <div class="summary-tile-label">Root nodes</div>
+        <div class="summary-tile-value">@roots.Count</div>
+        <div class="summary-tile-hint">Top-level reporting lines</div>
+    </div>
+    <div class="summary-tile">
+        <div class="summary-tile-label">POD stations</div>
+        <div class="summary-tile-value">@ViewBag.PodStationCount</div>
+        <div class="summary-tile-hint">Locations in the network</div>
+    </div>
+    <div class="summary-tile">
+        <div class="summary-tile-label">PODs</div>
+        <div class="summary-tile-value">@ViewBag.PodCount</div>
+        <div class="summary-tile-hint">Points of distribution</div>
+    </div>
+</div>
+
+<div class="toolbar-card">
+    <form method="get" class="toolbar-search">
+        <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search people or designations..." />
+        <button type="submit" class="btn btn-ghost btn-sm" aria-label="Search hierarchy"><i class="bi bi-search"></i></button>
+        @if (!string.IsNullOrWhiteSpace(query))
+        {
+            <a asp-action="Hierarchy" class="btn btn-ghost btn-sm">Clear</a>
+        }
+    </form>
+    <div class="toolbar-meta">
+        <span>@people.Count of @ViewBag.TotalPeople people</span>
+        <span class="toolbar-divider"></span>
+        <div class="segmented" aria-label="Hierarchy view">
+            <button type="button" class="active" aria-pressed="true" data-view-toggle data-view-target="#hierarchyTree" data-hide-target=".hierarchy-view">Tree</button>
+            <button type="button" aria-pressed="false" data-view-toggle data-view-target="#hierarchyTable" data-hide-target=".hierarchy-view">Table</button>
+        </div>
+    </div>
+</div>
+
+@if (roots.Count == 0)
+{
+    <div class="card-clean">
+        <div class="empty-state">
+            <i class="bi bi-diagram-3"></i>
+            <div class="fw-semibold">No hierarchy nodes found</div>
+            <div class="text-hint small">Try a different search term or add a salesperson record.</div>
+            <a asp-action="CreateSalesPerson" class="btn btn-brand btn-sm mt-2">Add employee</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="tree-canvas hierarchy-view" id="hierarchyTree">
+        <div class="tree-root">
+            @foreach (var root in roots)
+            {
+                <partial name="_HierarchyNode" model="root" />
+            }
+        </div>
+    </div>
+
+    <div id="hierarchyTable" class="hierarchy-view" hidden>
+        <div class="card-clean">
+            <div class="table-responsive">
+                <table class="table table-clean">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Designation</th>
+                            <th>Reports to</th>
+                            <th>Direct reports</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var person in people.OrderBy(p => p.Name))
+                    {
+                        <tr>
+                            <td>
+                                <div class="employee-cell">
+                                    <span class="avatar-initials">@(string.IsNullOrWhiteSpace(person.Name) ? "?" : person.Name.Trim()[..1].ToUpperInvariant())</span>
+                                    <span>
+                                        <span class="employee-name d-block">@person.Name</span>
+                                        <span class="employee-sub d-block">ID-@person.ID.ToString("D4")</span>
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="text-muted">@(string.IsNullOrWhiteSpace(person.Designation) ? "—" : person.Designation)</td>
+                            <td class="text-muted">
+                                @(person.ManagerId.HasValue && peopleById.TryGetValue(person.ManagerId.Value, out var manager) ? manager.Name : "Top level")
+                            </td>
+                            <td>
+                                <span class="badge-count">@(directReportCounts.TryGetValue(person.ID, out var reports) ? reports : 0)</span>
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="DetailsSalesPerson" asp-route-id="@person.ID" class="row-action" title="View employee"><i class="bi bi-arrow-right"></i></a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="tree-legend">
+        <span><span class="legend-dot is-brand"></span>Direct report count</span>
+        <span><i class="bi bi-arrows-move"></i>Scroll horizontally on smaller screens</span>
+    </div>
+}

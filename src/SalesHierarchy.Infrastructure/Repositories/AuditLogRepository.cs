@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using SalesHierarchy.Core.Interfaces.Repositories;
 using SalesHierarchy.Core.Models;
@@ -105,44 +106,23 @@ namespace SalesHierarchy.Infrastructure.Repositories
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
 
-            var idParameters = new List<string>();
-            var clauses = new List<string>();
-            using var cmd = new SqlCommand { Connection = conn };
+            // IDs and emails are passed as JSON parameters, so the SQL text is static.
+            var ids = JsonSerializer.Serialize(salesPersonIds.Distinct());
+            var emails = JsonSerializer.Serialize(
+                userEmails.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct(StringComparer.OrdinalIgnoreCase));
 
-            var index = 0;
-            foreach (var id in salesPersonIds.Distinct())
-            {
-                var name = $"@sp{index++}";
-                idParameters.Add(name);
-                cmd.Parameters.AddWithValue(name, id);
-            }
+            using var cmd = new SqlCommand(
+                @"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
+                  FROM dbo.AuditLog
+                  WHERE RelatedSalesPersonId IN (SELECT value FROM OPENJSON(@ids) WITH (value int '$'))
+                     OR ([EntityName] = 'SalesPerson'
+                         AND TRY_CONVERT(INT, EntityId) IN (SELECT value FROM OPENJSON(@ids) WITH (value int '$')))
+                     OR UserEmail IN (SELECT value FROM OPENJSON(@emails) WITH (value nvarchar(256) '$'))
+                  ORDER BY OccurredUtc DESC, ID DESC;", conn);
 
-            var idList = string.Join(", ", idParameters);
-            clauses.Add($"RelatedSalesPersonId IN ({idList})");
-            // Legacy rows written before RelatedSalesPersonId existed still belong to a
-            // salesperson when the entity itself is that salesperson.
-            clauses.Add($"([EntityName] = 'SalesPerson' AND TRY_CONVERT(INT, EntityId) IN ({idList}))");
-
-            index = 0;
-            var emailParameters = new List<string>();
-            foreach (var email in userEmails.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                var name = $"@email{index++}";
-                emailParameters.Add(name);
-                cmd.Parameters.AddWithValue(name, email);
-            }
-
-            if (emailParameters.Count > 0)
-            {
-                clauses.Add($"UserEmail IN ({string.Join(", ", emailParameters)})");
-            }
-
-            cmd.CommandText =
-                $@"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
-                   FROM dbo.AuditLog
-                   WHERE {string.Join(" OR ", clauses)}
-                   ORDER BY OccurredUtc DESC, ID DESC;";
             cmd.Parameters.AddWithValue("@take", take < 1 ? 1 : take);
+            cmd.Parameters.AddWithValue("@ids", ids);
+            cmd.Parameters.AddWithValue("@emails", emails);
 
             using var reader = cmd.ExecuteReader();
             while (reader.Read())

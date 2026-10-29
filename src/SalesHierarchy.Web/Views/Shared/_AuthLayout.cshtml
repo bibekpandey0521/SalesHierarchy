@@ -12,23 +12,25 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/base.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="auth-page">
     <div class="auth-shell">
         <aside class="auth-brand-panel">
             <a class="auth-brand" asp-controller="Home" asp-action="Index">
-                <div class="brand-mark"><i class="bi bi-diagram-3"></i></div>
-                <div>
-                    <div class="fw-semibold">SalesHierarchy</div>
-                    <div class="small auth-brand-subtitle">Enterprise Sales</div>
-                </div>
+                <span class="brand-mark"><i class="bi bi-diagram-3"></i></span>
+                <span>
+                    <span class="auth-brand-name d-block">SalesHierarchy</span>
+                    <span class="auth-brand-subtitle d-block">Enterprise sales operations</span>
+                </span>
             </a>
 
             <div class="auth-brand-copy">
                 <span class="auth-eyebrow"><i class="bi bi-stars"></i> Sales operations platform</span>
-                <h2>One clear view of every reporting line.</h2>
-                <p>Keep salespeople, PODs, dealers, and team assignments aligned in a secure workspace built for the whole organization.</p>
+                <h2>One organization. Connected at every level.</h2>
+                <p>Keep salespeople, PODs, dealers, and reporting lines aligned in a secure workspace built for the whole organization.</p>
                 <ul class="auth-points">
                     <li><i class="bi bi-check2-circle"></i>Role-based access for admins and sales teams</li>
                     <li><i class="bi bi-check2-circle"></i>Hierarchy-aware team management</li>
@@ -43,25 +45,30 @@
         </aside>
 
         <main class="auth-main">
-            <div class="auth-card card-clean">
-                <div class="card-body">
+            <div class="auth-card">
+                <div class="auth-card-body">
+                    <a class="auth-mobile-brand" asp-controller="Home" asp-action="Index">
+                        <span class="brand-mark"><i class="bi bi-diagram-3"></i></span>
+                        <span class="auth-mobile-brand-name">SalesHierarchy</span>
+                    </a>
+
                     <div class="auth-card-head">
                         <span class="auth-card-kicker"><i class="bi bi-shield-lock"></i> Secure access</span>
                         <h1 class="auth-card-title">@ViewData["Title"]</h1>
                         <p class="auth-card-subtitle">@authSubtitle</p>
                     </div>
                     @RenderBody()
-                    <div class="auth-card-footer">
-                        <a asp-controller="Public" asp-action="Index"><i class="bi bi-arrow-left me-1"></i>Back to public directory</a>
-                    </div>
                 </div>
+            </div>
+            <div class="auth-card-footer" style="border: 0; padding-top: 0; margin-top: 18px;">
+                <a asp-controller="Public" asp-action="Index"><i class="bi bi-arrow-left"></i> Back to public directory</a>
             </div>
             <div class="auth-legal">&copy; @DateTime.Now.Year SalesHierarchy. All rights reserved.</div>
         </main>
     </div>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/auth.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

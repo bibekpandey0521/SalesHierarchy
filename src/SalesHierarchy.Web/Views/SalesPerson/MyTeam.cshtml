@@ -16,12 +16,12 @@
         <h1 class="page-title">My Team</h1>
         <p class="page-subtitle">Manage the people in your reporting line. Reporting managers are assigned by a System Administrator.</p>
     </div>
-    <div class="d-flex flex-wrap gap-2">
+    <div class="page-actions">
         @if (isManager)
         {
-            <a asp-action="CreateTeamMember" class="btn btn-brand"><i class="bi bi-person-plus me-1"></i>Add team member</a>
+            <a asp-action="CreateTeamMember" class="btn btn-brand"><i class="bi bi-person-plus"></i>Add team member</a>
         }
-        <a asp-action="ReportingHierarchy" class="btn btn-ghost">View hierarchy</a>
+        <a asp-action="ReportingHierarchy" class="btn btn-ghost"><i class="bi bi-diagram-3"></i>View hierarchy</a>
     </div>
 </div>
 
@@ -69,19 +69,19 @@ else
                     {
                         <tr>
                             <td>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="employee-cell">
                                     <span class="avatar-initials">@(string.IsNullOrWhiteSpace(member.Name) ? "?" : member.Name.Trim()[..1].ToUpperInvariant())</span>
-                                    <div>
-                                        <div class="fw-medium">@member.Name</div>
+                                    <span>
+                                        <span class="employee-name d-block">@member.Name</span>
                                         @if (directReportCounts.TryGetValue(member.ID, out var directReports) && directReports > 0)
                                         {
-                                            <div class="text-hint small">@directReports direct report(s)</div>
+                                            <span class="employee-sub d-block">@directReports direct report(s)</span>
                                         }
-                                    </div>
+                                    </span>
                                 </div>
                             </td>
-                            <td class="text-hint">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
-                            <td class="text-hint">
+                            <td class="text-muted">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
+                            <td class="text-muted">
                                 @(member.ManagerId.HasValue && people.TryGetValue(member.ManagerId.Value, out var manager) ? manager.Name : "—")
                             </td>
                             <td>

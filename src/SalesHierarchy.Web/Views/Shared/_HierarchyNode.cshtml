@@ -1,0 +1,30 @@
+@model SalesHierarchy.Web.ViewModels.HierarchyNode
+@{
+    var initials = string.IsNullOrWhiteSpace(Model.Person.Name)
+        ? "?"
+        : Model.Person.Name.Trim()[..1].ToUpperInvariant();
+    var role = string.IsNullOrWhiteSpace(Model.Person.Designation) ? "Salesperson" : Model.Person.Designation;
+}
+<div class="tree-node">
+    <article class="tree-card @(Model.IsCurrent ? "is-current" : "")" title="@Model.Person.Name — @role">
+        <span class="avatar-initials">@initials</span>
+        <span class="tree-card-copy">
+            <span class="tree-name d-block">@Model.Person.Name</span>
+            <span class="tree-role d-block">@role</span>
+        </span>
+        @if (Model.Children.Count > 0)
+        {
+            <span class="tree-report-count" title="@Model.Children.Count direct report(s)">@Model.Children.Count</span>
+        }
+    </article>
+
+    @if (Model.Children.Count > 0)
+    {
+        <div class="tree-children">
+            @foreach (var child in Model.Children)
+            {
+                <partial name="_HierarchyNode" model="child" />
+            }
+        </div>
+    }
+</div>

@@ -1,26 +1,39 @@
 ﻿@model IEnumerable<SalesHierarchy.Core.Models.PODStation>
 @{
-    ViewData["Title"] = "POD Stations";
+    ViewData["Title"] = "POD stations";
     var query = ViewBag.Query as string;
+    var stationList = Model.ToList();
 }
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/hierarchy.css" asp-append-version="true" />
+}
+
 <div class="page-head">
     <div>
-        <h1 class="page-title">POD Stations</h1>
-        <p class="page-subtitle">Master data for POD station locations.</p>
+        <h1 class="page-title">POD stations</h1>
+        <p class="page-subtitle">Master data for POD station locations and their OSS identifiers.</p>
     </div>
-    <a asp-action="CreatePODStation" class="btn btn-brand"><i class="bi bi-plus-lg me-1"></i>New station</a>
+    <a asp-action="CreatePODStation" class="btn btn-brand"><i class="bi bi-plus-lg"></i>New station</a>
+</div>
+
+<div class="toolbar-card">
+    <form method="get" class="toolbar-search">
+        <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search stations..." />
+        <button type="submit" class="btn btn-ghost btn-sm" aria-label="Search stations"><i class="bi bi-search"></i></button>
+        @if (!string.IsNullOrWhiteSpace(query))
+        {
+            <a asp-action="PODStations" class="btn btn-ghost btn-sm">Clear</a>
+        }
+    </form>
+    <div class="toolbar-meta">
+        <span>@stationList.Count station(s)</span>
+    </div>
 </div>
 
 <div class="card-clean">
-    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
-        <form method="get" class="d-flex gap-2">
-            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search stations..." />
-            <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search"></i></button>
-        </form>
-        <span class="text-hint small">@Model.Count() station(s)</span>
-    </div>
     <div class="card-body p-0">
-        @if (!Model.Any())
+        @if (stationList.Count == 0)
         {
             <div class="empty-state">
                 <i class="bi bi-building"></i>
@@ -32,16 +45,27 @@
         else
         {
             <div class="table-responsive">
-                <table class="table table-clean mb-0">
+                <table class="table table-clean">
                     <thead>
-                        <tr><th>Name</th><th>OSS POD Station Id</th><th class="text-end">Actions</th></tr>
+                        <tr>
+                            <th>Station</th>
+                            <th>OSS POD Station ID</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
                     </thead>
                     <tbody>
-                    @foreach (var station in Model)
+                    @foreach (var station in stationList)
                     {
                         <tr>
-                            <td class="fw-medium">@station.Name</td>
-                            <td class="text-hint mono">@(string.IsNullOrWhiteSpace(station.OSSPODStationId) ? "—" : station.OSSPODStationId)</td>
+                            <td>
+                                <div class="employee-cell">
+                                    <span class="station-icon"><i class="bi bi-building"></i></span>
+                                    <span class="employee-name">@station.Name</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="id-code text-muted">@(string.IsNullOrWhiteSpace(station.OSSPODStationId) ? "—" : station.OSSPODStationId)</span>
+                            </td>
                             <td class="text-end text-nowrap">
                                 <a asp-action="DetailsPODStation" asp-route-id="@station.ID" class="btn btn-sm btn-ghost" title="Details"><i class="bi bi-eye"></i></a>
                                 <a asp-action="EditPODStation" asp-route-id="@station.ID" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
