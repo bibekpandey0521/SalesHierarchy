@@ -88,6 +88,7 @@ $tables = @(
     @{ Name = "SalesPerson"; File = "SalesPerson.sql" },
     @{ Name = "Dealer"; File = "Dealer.sql" },
     @{ Name = "POD"; File = "POD.sql" },
+    @{ Name = "SalesPersonPOD"; File = "SalesPersonPOD.sql" },
     @{ Name = "salesdealermapping"; File = "salesdealermapping.sql" },
     @{ Name = "AuditLog"; File = "AuditLog.sql" }
 )
@@ -114,6 +115,11 @@ $upgradeFile = Join-Path $scriptDir "Upgrade-AuditLog.sql"
 if (Test-Path $upgradeFile) {
     Write-Host "Applying idempotent schema upgrades..."
     Invoke-SqlFile -Path $upgradeFile -DatabaseName $Database
+}
+
+$podUpgradeFile = Join-Path $scriptDir "Upgrade-SalesPersonPOD.sql"
+if (Test-Path $podUpgradeFile) {
+    Invoke-SqlFile -Path $podUpgradeFile -DatabaseName $Database
 }
 
 if ($SeedDemoData) {

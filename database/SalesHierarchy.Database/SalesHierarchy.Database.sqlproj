@@ -33,8 +33,15 @@
     <Build Include="Tables\PODStation.sql" />
     <Build Include="Tables\SalesPerson.sql" />
     <Build Include="Tables\POD.sql" />
+    <Build Include="Tables\SalesPersonPOD.sql" />
     <Build Include="Tables\Dealer.sql" />
     <Build Include="Tables\salesdealermapping.sql" />
     <Build Include="Tables\AuditLog.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Scripts\SalesPersonPOD.Migration.sql" />
+    <None Include="Scripts\PODStation.Seed.sql" />
+    <None Include="Scripts\POD.Seed.sql" />
+    <None Include="Scripts\Import-ReviewedSalesData.sql" />
   </ItemGroup>
 </Project>

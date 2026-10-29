@@ -19,8 +19,11 @@ namespace SalesHierarchy.Core.Interfaces.Repositories
         SalesPerson? GetById(int id);
         IEnumerable<SalesPerson> GetDirectReports(int managerId);
         bool HasSubordinates(int salesPersonId);
+        IReadOnlyList<int> GetPODIds(int salesPersonId);
         int Add(SalesPerson person);
+        int AddWithPODs(SalesPerson person, IReadOnlyCollection<int> podIds);
         bool Update(SalesPerson person);
+        bool UpdateWithPODs(SalesPerson person, IReadOnlyCollection<int> podIds);
         bool Delete(int id);
     }
 
@@ -29,6 +32,7 @@ namespace SalesHierarchy.Core.Interfaces.Repositories
         IEnumerable<POD> GetAll();
         POD? GetById(int id);
         IEnumerable<POD> GetBySalesPersonId(int salespersonId);
+        IReadOnlyCollection<int> GetExistingIds(IEnumerable<int> podIds);
         bool HasPodsForStation(int podStationId);
         bool HasPodsForSalesPerson(int salespersonId);
         int Add(POD pod);

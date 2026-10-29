@@ -17,3 +17,8 @@ src/SalesHierarchy.Web/App_Data/
 # IDE files
 .idea/
 *.swp
+
+# Local source workbooks (review data, not committed)
+/pods.xlsx
+/Sales Mapping With Dealer and POD.xlsx
+/imports/

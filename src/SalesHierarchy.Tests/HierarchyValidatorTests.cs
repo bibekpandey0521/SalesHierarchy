@@ -98,4 +98,101 @@ public class HierarchyValidatorTests
     {
         Assert.Empty(HierarchyValidator.GetManagerChain(1, People()));
     }
+
+    private static List<SalesPerson> Ladder() => new()
+    {
+        new SalesPerson { ID = 1, Name = "CXO", Designation = "CXO" },
+        new SalesPerson { ID = 2, Name = "Head", Designation = "Head", ManagerId = 1 },
+        new SalesPerson { ID = 3, Name = "Manager", Designation = "Sales Manager", ManagerId = 2 },
+        new SalesPerson { ID = 4, Name = "Officer", Designation = "Sales Officer", ManagerId = 3 }
+    };
+
+    [Fact]
+    public void Cxo_WithNoManager_IsValid()
+    {
+        Assert.Null(HierarchyValidator.ValidateAssignment(1, "CXO", null, Ladder()));
+    }
+
+    [Fact]
+    public void Cxo_WithManager_IsRejected()
+    {
+        var error = HierarchyValidator.ValidateAssignment(1, "CXO", 2, Ladder());
+
+        Assert.NotNull(error);
+        Assert.Contains("top-level", error);
+    }
+
+    [Theory]
+    [InlineData("Head", 1)]
+    [InlineData("Sales Manager", 2)]
+    [InlineData("Supervisor", 2)]
+    [InlineData("Sales Officer", 3)]
+    public void ValidManagerForEachDesignation_IsAccepted(string designation, int managerId)
+    {
+        Assert.Null(HierarchyValidator.ValidateAssignment(0, designation, managerId, Ladder()));
+    }
+
+    [Theory]
+    [InlineData("Head", 2)]
+    [InlineData("Head", 3)]
+    [InlineData("Sales Manager", 3)]
+    [InlineData("Sales Officer", 1)]
+    [InlineData("Sales Officer", 2)]
+    public void InvalidManagerDesignationCombination_IsRejected(string designation, int managerId)
+    {
+        Assert.NotNull(HierarchyValidator.ValidateAssignment(0, designation, managerId, Ladder()));
+    }
+
+    [Fact]
+    public void KnownNonTopLevelDesignation_RequiresManager()
+    {
+        var error = HierarchyValidator.ValidateAssignment(0, "Sales Officer", null, Ladder());
+
+        Assert.NotNull(error);
+        Assert.Contains("must report", error);
+    }
+
+    [Fact]
+    public void CustomDesignation_KeepsLegacyFlexibility()
+    {
+        Assert.Null(HierarchyValidator.ValidateAssignment(0, "Regional Manager - North", 1, Ladder()));
+    }
+
+    [Fact]
+    public void SelfReporting_IsRejectedThroughAssignmentValidation()
+    {
+        var error = HierarchyValidator.ValidateAssignment(3, "Sales Manager", 3, Ladder());
+
+        Assert.NotNull(error);
+        Assert.Contains("themselves", error);
+    }
+
+    [Fact]
+    public void CircularAssignment_IsRejectedThroughAssignmentValidation()
+    {
+        var error = HierarchyValidator.ValidateAssignment(2, "Head", 4, Ladder());
+
+        Assert.NotNull(error);
+        Assert.Contains("circular", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void NonexistentManager_IsRejected()
+    {
+        var error = HierarchyValidator.ValidateAssignment(0, "Head", 999, Ladder());
+
+        Assert.NotNull(error);
+        Assert.Contains("does not exist", error);
+    }
+
+    [Fact]
+    public void DesignationLevels_AreNormalizedAndVerified()
+    {
+        Assert.Equal(HierarchyValidator.CxoLevel, HierarchyValidator.GetDesignationLevel("  cxo "));
+        Assert.Equal(HierarchyValidator.HeadLevel, HierarchyValidator.GetDesignationLevel("HEAD"));
+        Assert.Equal(HierarchyValidator.ManagerLevel, HierarchyValidator.GetDesignationLevel("sales  manager"));
+        Assert.Equal(HierarchyValidator.ManagerLevel, HierarchyValidator.GetDesignationLevel("Sales Manager/Supervisor"));
+        Assert.Equal(HierarchyValidator.OfficerLevel, HierarchyValidator.GetDesignationLevel("Sales Officer"));
+        Assert.Null(HierarchyValidator.GetDesignationLevel("Regional Manager"));
+    }
 }

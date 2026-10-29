@@ -8,6 +8,143 @@ namespace SalesHierarchy.Core.Validation
     /// </summary>
     public static class HierarchyValidator
     {
+        public const string CxoLevel = "CXO";
+        public const string HeadLevel = "Head";
+        public const string ManagerLevel = "Manager";
+        public const string OfficerLevel = "Officer";
+
+        private static readonly IReadOnlyDictionary<string, string> DesignationLevels =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["cxo"] = CxoLevel,
+                ["head"] = HeadLevel,
+                ["sales manager"] = ManagerLevel,
+                ["supervisor"] = ManagerLevel,
+                ["sales manager/supervisor"] = ManagerLevel,
+                ["sales manager / supervisor"] = ManagerLevel,
+                ["sales officer"] = OfficerLevel
+            };
+
+        /// <summary>
+        /// Returns the verified hierarchy level for a designation, or null when the
+        /// designation is not part of the CXO/Head/Manager/Officer ladder. Null levels
+        /// are treated as legacy/custom designations and are not restricted.
+        /// </summary>
+        public static string? GetDesignationLevel(string? designation)
+        {
+            var normalized = NormalizeDesignation(designation);
+            return normalized != null && DesignationLevels.TryGetValue(normalized, out var level)
+                ? level
+                : null;
+        }
+
+        public static IReadOnlyDictionary<string, string> GetDesignationLevelMap()
+        {
+            return DesignationLevels;
+        }
+
+        public static IReadOnlyList<string> GetExpectedManagerLevels(string? designation)
+        {
+            return GetDesignationLevel(designation) switch
+            {
+                CxoLevel => Array.Empty<string>(),
+                HeadLevel => new[] { CxoLevel },
+                ManagerLevel => new[] { HeadLevel },
+                OfficerLevel => new[] { ManagerLevel },
+                _ => Array.Empty<string>()
+            };
+        }
+
+        public static bool IsManagerLevelAllowed(string? designation, string? managerDesignation)
+        {
+            var level = GetDesignationLevel(designation);
+            if (level == null)
+            {
+                // Custom/legacy designations keep working; there is no verified rule to enforce.
+                return true;
+            }
+
+            if (level == CxoLevel)
+            {
+                return false;
+            }
+
+            var managerLevel = GetDesignationLevel(managerDesignation);
+            return managerLevel != null && GetExpectedManagerLevels(designation).Contains(managerLevel);
+        }
+
+        /// <summary>
+        /// Validates a create/edit manager assignment. Returns a user-facing error
+        /// message, or null when the assignment is valid.
+        /// </summary>
+        public static string? ValidateAssignment(
+            int salesPersonId,
+            string? designation,
+            int? managerId,
+            IEnumerable<SalesPerson> allPeople)
+        {
+            var people = allPeople as IReadOnlyCollection<SalesPerson> ?? allPeople.ToList();
+            var byId = people.GroupBy(p => p.ID).ToDictionary(g => g.Key, g => g.First());
+            var level = GetDesignationLevel(designation);
+
+            if (!managerId.HasValue)
+            {
+                if (level == CxoLevel)
+                {
+                    return null;
+                }
+
+                if (level != null)
+                {
+                    var expected = string.Join(" or ", GetExpectedManagerLevels(designation));
+                    return $"{designation} must report to a {expected}.";
+                }
+
+                return null;
+            }
+
+            if (level == CxoLevel)
+            {
+                return "A CXO is a top-level role and cannot have a reporting manager.";
+            }
+
+            if (!byId.TryGetValue(managerId.Value, out var manager))
+            {
+                return "The selected reporting manager does not exist.";
+            }
+
+            if (salesPersonId > 0 && managerId.Value == salesPersonId)
+            {
+                return "A salesperson cannot report to themselves.";
+            }
+
+            if (salesPersonId > 0 && WouldCreateCycle(salesPersonId, managerId, people))
+            {
+                return "This manager would create a circular reporting relationship.";
+            }
+
+            if (level != null && !IsManagerLevelAllowed(designation, manager.Designation))
+            {
+                var expected = string.Join(" or ", GetExpectedManagerLevels(designation));
+                return $"{designation} must report to a {expected}, not a {manager.Designation ?? "person with no designation"}.";
+            }
+
+            return null;
+        }
+
+        private static string? NormalizeDesignation(string? designation)
+        {
+            if (string.IsNullOrWhiteSpace(designation))
+            {
+                return null;
+            }
+
+            return string.Join(
+                ' ',
+                designation.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+                .ToLowerInvariant();
+        }
+
         /// <summary>
         /// Returns true when assigning <paramref name="managerId"/> as the manager of
         /// <paramref name="salesPersonId"/> would create a cycle (including self-reporting).

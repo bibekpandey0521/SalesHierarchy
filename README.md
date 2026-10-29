@@ -33,7 +33,8 @@ SalesHierarchy/
 |---|---|---|
 | `PODStation` | `ID` | Optional `OSSPODStationId`, required `Name` |
 | `SalesPerson` | `ID` | `ManagerId` self-reference is the source of truth for hierarchy |
-| `POD` | `ID` | Belongs to a `PODStation`, optionally assigned to a salesperson |
+| `POD` | `ID` | Belongs to a `PODStation`; legacy `salespersonId` is kept for compatibility |
+| `SalesPersonPOD` | `SalesPersonId` + `PODId` | Many-to-many POD ownership; source of truth for multi-POD assignment |
 | `Dealer` | `UniqueID` | `Code` is unique |
 | `salesdealermapping` | `UniqueID` | Links a salesperson to a dealer; duplicates blocked in the application |
 | `AuditLog` | `ID` | Append-only history of business/account changes (added by this application); optional `RelatedSalesPersonId` scopes an event to a team |
@@ -52,11 +53,39 @@ powershell -ExecutionPolicy Bypass -File .\database\Setup-LocalDb.ps1 -SeedDemoD
 powershell -ExecutionPolicy Bypass -File .\database\Setup-LocalDb.ps1 -Server "(localdb)\MSSQLLocalDB" -SeedDemoData
 ```
 
-The setup script also runs `database/Upgrade-AuditLog.sql`, which safely adds the `RelatedSalesPersonId` column to an existing `dbo.AuditLog`. To upgrade a database created by an older version manually, run:
+The setup script also runs `database/Upgrade-AuditLog.sql`, which safely adds the `RelatedSalesPersonId` column to an existing `dbo.AuditLog`, and `database/Upgrade-SalesPersonPOD.sql`, which creates `dbo.SalesPersonPOD` and copies verified legacy `POD.salespersonId` assignments. To upgrade a database created by an older version manually, run:
 
 ```powershell
 sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Upgrade-AuditLog.sql
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Upgrade-SalesPersonPOD.sql
 ```
+
+Both scripts are idempotent. The POD migration never drops the legacy `POD.salespersonId` column.
+
+### Reviewed workbook import
+
+The supplied `pods.xlsx` and `Sales Mapping With Dealer and POD.xlsx` rows were reviewed and applied to the local `SalesProdAuthDb` with:
+
+```powershell
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\SalesHierarchy.Database\Scripts\Import-ReviewedSalesData.sql
+```
+
+The import added 73 stations, 208 PODs, 34 salespeople, 208 POD-to-officer assignments, 40 dealers, and 67 dealer-to-officer mappings. It is idempotent and never overwrites existing names, designations, or owners.
+
+Verify it with the read-only script:
+
+```powershell
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Verify-ReviewedImport.sql
+```
+
+Review exceptions are documented in `docs/REPORTING-HIERARCHY-AND-POD.md`:
+
+- 3 manager links are intentionally `NULL` because the workbook gives conflicting parents.
+- 65 PODs are not imported because neither workbook supplies a station for them and `POD.PODStationId` is `NOT NULL`.
+- Two `Trisuli POD Station` rows were normalized to the station master's `Trishuli POD Station`.
+- Dealer records use the dealer code as both `Name` and `Code` because the workbook contains no dealer names.
+
+The source workbooks are local data files and are excluded from Git; do not commit them.
 
 Then apply the committed Identity migration and configure the first administrator:
 
@@ -177,7 +206,8 @@ Public pages use read-only DTOs (`PublicSalesPersonDto`, `PublicPODStationDto`, 
 
 - Full CRUD for all five business tables (list, details, create, edit, delete confirmation)
 - Search on list pages and database-populated dropdowns
-- Reporting-manager assignment with self-reporting and circular-hierarchy rejection. This is the only place where a salesperson's manager can be created or changed.
+- Reporting-manager assignment with self-reporting and circular-hierarchy rejection. This is the only place where a salesperson's manager can be created or changed. The manager list follows the verified CXO → Head → Manager/Supervisor → Officer ladder; custom/legacy designations remain unrestricted.
+- Create/edit a salesperson and assign any number of PODs in one transaction, using a searchable multi-select with removable tags. Duplicate, missing, and non-existent POD IDs are rejected before any write, and the legacy `POD.salespersonId` column is kept in sync where it is safe to do so.
 - Delete guards: subordinates, assigned PODs, dealer mappings, and linked accounts block salesperson deletion; PODs block station deletion; mappings block dealer deletion
 - Individual salesperson account creation (business record + Identity account + invitation in one flow, with compensating rollback)
 - Excel bulk upload with validation, preview, confirmation, result summary, and downloadable results
@@ -216,7 +246,9 @@ dotnet test SalesHierarchy.slnx
 
 Automated tests cover:
 
-- Hierarchy rules: self-reporting, direct/deep cycles, valid reassignment, descendants, manager chain, cycle tolerance, subtree scope
+- Hierarchy rules: self-reporting, direct/deep cycles, valid reassignment, designation-ladder compatibility, descendants, manager chain, cycle tolerance, subtree scope
+- POD assignment rules: deduplication, add/remove diff, empty selection, transactional persistence expectations
+- Reporting-hierarchy import review: duplicates, conflicting designations/managers, missing managers, self-reporting, cycles
 - Bulk row rules: required fields, e-mail formats, length limits, self-reporting, in-file circular managers
 - Bulk upload status logic
 - Authorization: controller role requirements and POST/anti-forgery protection of admin and manager mutations

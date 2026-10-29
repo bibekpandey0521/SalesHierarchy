@@ -17,10 +17,49 @@ Covered automatically:
 
 | Area | Tests |
 |---|---|
-| Hierarchy rules | self-reporting, direct cycle, deep cycle, valid reassignment, descendants, manager chain, cycle tolerance, subtree scope includes self/descendants and excludes managers/other teams |
+| Hierarchy rules | self-reporting, direct cycle, deep cycle, valid reassignment, designation-ladder compatibility, descendants, manager chain, cycle tolerance, subtree scope includes self/descendants and excludes managers/other teams |
+| POD assignment rules | deduplication/sorting, add/remove diff, unchanged selection, empty selection |
+| Reporting-hierarchy import review | duplicate names, conflicting designations/managers, missing managers, self-reporting, cycles, unknown designation warnings |
 | Bulk row validation | required fields, e-mail formats, max lengths, manager e-mail format, self-reporting, in-file circular managers |
 | Bulk upload status | valid/invalid/duplicate rows, importability, batch counts |
 | Authorization | controller role attributes, POST + anti-forgery on all admin and SalesPerson team mutations |
+
+Current result: `Passed! Failed: 0, Passed: 58, Skipped: 0, Total: 58`.
+
+## Reviewed database import
+
+Apply the upgrade and reviewed import, then verify the expected counts and conflicts:
+
+```powershell
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Upgrade-SalesPersonPOD.sql
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\SalesHierarchy.Database\Scripts\Import-ReviewedSalesData.sql
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Verify-ReviewedImport.sql
+```
+
+```sql
+SELECT
+    (SELECT COUNT(*) FROM dbo.PODStation) AS PODStations,
+    (SELECT COUNT(*) FROM dbo.POD) AS PODs,
+    (SELECT COUNT(*) FROM dbo.SalesPerson) AS SalesPeople,
+    (SELECT COUNT(*) FROM dbo.SalesPersonPOD) AS SalesPersonPODs,
+    (SELECT COUNT(*) FROM dbo.Dealer) AS Dealers,
+    (SELECT COUNT(*) FROM dbo.salesdealermapping) AS DealerMappings;
+
+-- Expected: 75, 211, 38, 211, 44, 71 on the local reviewed database.
+
+SELECT COUNT(*) AS InvalidManagerLinks
+FROM dbo.SalesPerson sp
+LEFT JOIN dbo.SalesPerson m ON m.ID = sp.ManagerId
+WHERE (sp.Designation = 'Head' AND ISNULL(m.Designation, '') <> 'CXO')
+   OR (sp.Designation = 'Sales Manager/Supervisor' AND ISNULL(m.Designation, '') <> 'Head')
+   OR (sp.Designation = 'Sales Officer' AND ISNULL(m.Designation, '') <> 'Sales Manager/Supervisor')
+   OR (sp.Designation = 'CXO' AND sp.ManagerId IS NOT NULL);
+
+-- Expected: 3, the documented conflicts:
+-- Bipindra Neupane, Ujjwol Neupane, Hritik Mishra.
+```
+
+The import is idempotent: re-run it and the counts must remain unchanged. It creates no duplicate station names/source IDs, POD names/source IDs, dealer codes, salesperson names, or dealer mappings. The 65 PODs without a verified station are reported but not inserted.
 
 ## Initial System Admin
 
@@ -61,6 +100,10 @@ For each module verify list, details, create, edit, delete confirmation, validat
 
 - [ ] POD Stations: duplicate name rejected; delete blocked while PODs reference the station.
 - [ ] Sales Persons: required name/designation; self-reporting rejected; circular manager rejected; invalid manager rejected; duplicate account e-mail rejected.
+- [ ] Sales Persons: manager choices are filtered by designation (CXO → none, Head → CXO, Manager/Supervisor → Head, Officer → Manager); submitting a forged incompatible manager ID is rejected server-side.
+- [ ] Sales Persons: searchable POD multi-select shows removable tags, supports name/OSS ID/station search, and submits repeated `PODIds` values.
+- [ ] Sales Persons: create/edit with zero, one, and many PODs; duplicates in the submitted IDs are collapsed; a deleted/invalid POD ID is rejected without writing the salesperson.
+- [ ] Sales Persons: saving a POD assignment keeps legacy `POD.salespersonId` consistent and does not overwrite another salesperson's legacy owner.
 - [ ] Sales Persons: delete blocked by direct reports, assigned PODs, dealer mappings, or a linked login account.
 - [ ] PODs: station and salesperson dropdowns are populated from the database; invalid values rejected; create/edit/delete work.
 - [ ] Dealers: duplicate code rejected; delete blocked while mappings exist.

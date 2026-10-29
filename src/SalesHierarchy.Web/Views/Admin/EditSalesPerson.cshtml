@@ -1,19 +1,27 @@
-@model SalesHierarchy.Core.Models.SalesPerson
+@model SalesHierarchy.Web.ViewModels.SalesPersonFormViewModel
+@using System.Text.Json
+@using SalesHierarchy.Core.Validation
 @{
     ViewData["Title"] = "Edit salesperson";
-    var managers = ViewBag.Managers as List<SalesHierarchy.Core.Models.SalesPerson> ?? new List<SalesHierarchy.Core.Models.SalesPerson>();
+    var selectedPods = Model.AvailablePODs.Where(p => Model.PODIds.Contains(p.ID)).ToList();
+    var designationMap = JsonSerializer.Serialize(HierarchyValidator.GetDesignationLevelMap());
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/pod-multiselect.css" asp-append-version="true" />
 }
 <div class="page-head">
     <div>
         <h1 class="page-title">Edit salesperson</h1>
-        <p class="page-subtitle">Update details or change the reporting manager.</p>
+        <p class="page-subtitle">Update details, reporting line, and POD assignments.</p>
     </div>
     <a asp-action="SalesPersons" class="btn btn-ghost">Back to list</a>
 </div>
 
 <div class="card-clean form-card">
     <div class="card-body">
-        <form asp-action="EditSalesPerson" method="post" novalidate>
+        <form asp-action="EditSalesPerson" method="post" novalidate
+              data-hierarchy-form
+              data-designation-map='@Html.Raw(designationMap)'>
             <input type="hidden" asp-for="ID" />
             <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
             <div class="row g-3">
@@ -24,20 +32,88 @@
                 </div>
                 <div class="col-md-6">
                     <label asp-for="Designation" class="form-label"></label>
-                    <input asp-for="Designation" class="form-control" autocomplete="off" />
+                    <input asp-for="Designation" class="form-control" autocomplete="off"
+                           list="designationOptions" data-designation-input />
+                    <datalist id="designationOptions">
+                        @foreach (var designation in Model.DesignationOptions)
+                        {
+                            <option value="@designation"></option>
+                        }
+                    </datalist>
                     <span asp-validation-for="Designation" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="ManagerId" class="form-label"></label>
-                    <select asp-for="ManagerId" class="form-select">
-                        <option value="">No manager (top level)</option>
-                        @foreach (var manager in managers)
+                    <select asp-for="ManagerId" class="form-select" data-manager-select>
+                        <option value="" data-level="">No manager (top level)</option>
+                        @foreach (var manager in Model.Managers)
                         {
-                            <option value="@manager.ID">@manager.Name — @manager.Designation</option>
+                            <option value="@manager.ID" data-level="@HierarchyValidator.GetDesignationLevel(manager.Designation)">
+                                @manager.Name@(string.IsNullOrWhiteSpace(manager.Designation) ? "" : $" — {manager.Designation}")
+                            </option>
                         }
                     </select>
-                    <div class="form-text text-hint">Self-reporting and circular relationships are rejected.</div>
+                    <div class="form-text text-hint" data-manager-hint>
+                        The manager list follows the verified CXO, Head, Manager, Officer hierarchy.
+                    </div>
                     <span asp-validation-for="ManagerId" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="PODIds" class="form-label"></label>
+                    <div class="pod-multiselect" data-pod-multiselect
+                         data-no-results="No PODs match your search."
+                         data-no-options="No PODs are available yet. Ask an administrator to create POD master data.">
+                        <div class="pod-multiselect-control">
+                            <ul class="pod-chips" data-pod-chips aria-live="polite">
+                                @foreach (var pod in selectedPods)
+                                {
+                                    <li class="pod-chip">
+                                        <span>@pod.Name</span>
+                                        <button type="button" class="pod-chip-remove" aria-label="Remove @pod.Name" disabled>&times;</button>
+                                    </li>
+                                }
+                            </ul>
+                            <input type="search" class="pod-search" data-pod-search
+                                   placeholder="Search PODs by name, OSS ID, or station..."
+                                   autocomplete="off" role="combobox"
+                                   aria-autocomplete="list" aria-expanded="false"
+                                   aria-label="Search PODs" />
+                        </div>
+                        <div class="pod-options" data-pod-options role="listbox" aria-multiselectable="true" hidden>
+                            @foreach (var pod in Model.AvailablePODs)
+                            {
+                                var stationName = Model.Stations.TryGetValue(pod.PODStationId, out var station)
+                                    ? station.Name
+                                    : $"Station #{pod.PODStationId}";
+                                var isSelected = Model.PODIds.Contains(pod.ID);
+                                <button type="button" class="pod-option @(isSelected ? "is-selected" : "")"
+                                        role="option"
+                                        aria-selected="@(isSelected ? "true" : "false")"
+                                        data-pod-option
+                                        data-pod-id="@pod.ID"
+                                        data-pod-name="@pod.Name"
+                                        data-pod-label="@pod.Name — @stationName"
+                                        data-pod-station="@stationName"
+                                        data-pod-search="@($"{pod.Name} {pod.OSSPODID} {stationName}")"
+                                        data-selected="@(isSelected ? "true" : "false")">
+                                    <span class="pod-option-main">
+                                        <span class="pod-option-name">@pod.Name</span>
+                                        <span class="pod-option-meta">@stationName@(string.IsNullOrWhiteSpace(pod.OSSPODID) ? "" : $" · {pod.OSSPODID}")</span>
+                                    </span>
+                                    <span class="pod-option-check" aria-hidden="true"><i class="bi bi-check2"></i></span>
+                                </button>
+                            }
+                            <div class="pod-option-empty" data-pod-empty hidden></div>
+                        </div>
+                        <div class="pod-hidden-inputs" data-pod-inputs>
+                            @foreach (var podId in Model.PODIds)
+                            {
+                                <input type="hidden" name="PODIds" value="@podId" />
+                            }
+                        </div>
+                    </div>
+                    <div class="form-text text-hint">Add or remove PODs. Saving updates all assignments in one transaction.</div>
+                    <span asp-validation-for="PODIds" class="text-danger small"></span>
                 </div>
             </div>
             <div class="d-flex gap-2 mt-4">
@@ -47,3 +123,9 @@
         </form>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/pod-multiselect.js" asp-append-version="true"></script>
+    <script src="~/js/hierarchy-form.js" asp-append-version="true"></script>
+}

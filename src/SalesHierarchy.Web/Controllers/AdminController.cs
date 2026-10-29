@@ -24,6 +24,7 @@ namespace SalesHierarchy.Web.Controllers
         private readonly BulkUploadService _bulkUploadService;
         private readonly AuditService _audit;
         private readonly IAuditLogRepository _auditLogRepository;
+        private readonly ILogger<AdminController> _logger;
 
         public AdminController(
             IPODStationRepository podStationRepository,
@@ -35,7 +36,8 @@ namespace SalesHierarchy.Web.Controllers
             IEmailSender emailSender,
             BulkUploadService bulkUploadService,
             AuditService audit,
-            IAuditLogRepository auditLogRepository)
+            IAuditLogRepository auditLogRepository,
+            ILogger<AdminController> logger)
         {
             _podStationRepository = podStationRepository;
             _salesPersonRepository = salesPersonRepository;
@@ -47,6 +49,7 @@ namespace SalesHierarchy.Web.Controllers
             _bulkUploadService = bulkUploadService;
             _audit = audit;
             _auditLogRepository = auditLogRepository;
+            _logger = logger;
         }
 
         // ---------------------------------------------------------------- dashboard
@@ -456,34 +459,45 @@ namespace SalesHierarchy.Web.Controllers
 
         public IActionResult CreateSalesPerson()
         {
-            LoadManagers();
-            return View(new SalesPerson());
+            var model = new SalesPersonFormViewModel();
+            LoadSalesPersonForm(model);
+            return View(model);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult CreateSalesPerson(SalesPerson person)
+        public IActionResult CreateSalesPerson(SalesPersonFormViewModel model)
         {
-            person.Name = person.Name?.Trim() ?? string.Empty;
-            person.Designation = string.IsNullOrWhiteSpace(person.Designation) ? null : person.Designation.Trim();
+            NormalizeSalesPersonForm(model);
+            ValidateSalesPersonForm(model, null);
 
             if (!ModelState.IsValid)
             {
-                LoadManagers();
-                return View(person);
+                LoadSalesPersonForm(model);
+                return View(model);
             }
 
-            if (person.ManagerId.HasValue && _salesPersonRepository.GetById(person.ManagerId.Value) == null)
+            var person = MapToSalesPerson(model);
+            try
             {
-                ModelState.AddModelError(nameof(SalesPerson.ManagerId), "The selected reporting manager does not exist.");
-                LoadManagers();
-                return View(person);
+                var personId = _salesPersonRepository.AddWithPODs(person, model.PODIds);
+                _audit.Record(
+                    "Create",
+                    "SalesPerson",
+                    personId.ToString(),
+                    $"Salesperson '{person.Name}' created with {model.PODIds.Count} POD assignment(s).",
+                    new { Person = person, PODIds = model.PODIds },
+                    relatedSalesPersonId: personId);
+                TempData["SuccessMessage"] = $"Salesperson '{person.Name}' created. Create a login account to give them access.";
+                return RedirectToAction(nameof(SalesPersons));
             }
-
-            var personId = _salesPersonRepository.Add(person);
-            _audit.Record("Create", "SalesPerson", personId.ToString(), $"Salesperson '{person.Name}' created.", person, relatedSalesPersonId: personId);
-            TempData["SuccessMessage"] = $"Salesperson '{person.Name}' created. Create a login account to give them access.";
-            return RedirectToAction(nameof(SalesPersons));
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Creating salesperson {Name} failed.", person.Name);
+                ModelState.AddModelError(string.Empty, "The salesperson could not be created. No changes were saved. Please review the details and try again.");
+                LoadSalesPersonForm(model);
+                return View(model);
+            }
         }
 
         public IActionResult EditSalesPerson(int id)
@@ -494,50 +508,148 @@ namespace SalesHierarchy.Web.Controllers
                 return NotFound();
             }
 
-            LoadManagers(id);
-            return View(person);
+            var model = new SalesPersonFormViewModel
+            {
+                ID = person.ID,
+                Name = person.Name,
+                Designation = person.Designation,
+                ManagerId = person.ManagerId,
+                PODIds = _salesPersonRepository.GetPODIds(person.ID).ToList()
+            };
+
+            LoadSalesPersonForm(model, person.ID);
+            return View(model);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult EditSalesPerson(SalesPerson person)
+        public IActionResult EditSalesPerson(SalesPersonFormViewModel model)
         {
-            person.Name = person.Name?.Trim() ?? string.Empty;
-            person.Designation = string.IsNullOrWhiteSpace(person.Designation) ? null : person.Designation.Trim();
+            NormalizeSalesPersonForm(model);
 
-            var existing = _salesPersonRepository.GetById(person.ID);
+            var existing = _salesPersonRepository.GetById(model.ID);
             if (existing == null)
             {
                 return NotFound();
             }
 
-            if (person.ManagerId == person.ID)
-            {
-                ModelState.AddModelError(nameof(SalesPerson.ManagerId), "A salesperson cannot report to themselves.");
-            }
-
-            if (person.ManagerId.HasValue)
-            {
-                if (_salesPersonRepository.GetById(person.ManagerId.Value) == null)
-                {
-                    ModelState.AddModelError(nameof(SalesPerson.ManagerId), "The selected reporting manager does not exist.");
-                }
-                else if (HierarchyValidator.WouldCreateCycle(person.ID, person.ManagerId, _salesPersonRepository.GetAll()))
-                {
-                    ModelState.AddModelError(nameof(SalesPerson.ManagerId), "This manager would create a circular reporting relationship.");
-                }
-            }
+            ValidateSalesPersonForm(model, model.ID);
 
             if (!ModelState.IsValid)
             {
-                LoadManagers(person.ID);
-                return View(person);
+                LoadSalesPersonForm(model, model.ID);
+                return View(model);
             }
 
-            _salesPersonRepository.Update(person);
-            _audit.Record("Update", "SalesPerson", person.ID.ToString(), $"Salesperson '{person.Name}' updated.", new { Before = existing, After = person }, relatedSalesPersonId: person.ID);
-            TempData["SuccessMessage"] = $"Salesperson '{person.Name}' updated.";
-            return RedirectToAction(nameof(SalesPersons));
+            var person = MapToSalesPerson(model);
+            try
+            {
+                if (!_salesPersonRepository.UpdateWithPODs(person, model.PODIds))
+                {
+                    ModelState.AddModelError(string.Empty, "The salesperson could not be updated. It may have been deleted already.");
+                    LoadSalesPersonForm(model, model.ID);
+                    return View(model);
+                }
+
+                _audit.Record(
+                    "Update",
+                    "SalesPerson",
+                    person.ID.ToString(),
+                    $"Salesperson '{person.Name}' updated with {model.PODIds.Count} POD assignment(s).",
+                    new { Before = existing, After = person, PODIds = model.PODIds },
+                    relatedSalesPersonId: person.ID);
+                TempData["SuccessMessage"] = $"Salesperson '{person.Name}' updated.";
+                return RedirectToAction(nameof(SalesPersons));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Updating salesperson {SalesPersonId} failed.", person.ID);
+                ModelState.AddModelError(string.Empty, "The salesperson could not be updated. No changes were saved. Please review the details and try again.");
+                LoadSalesPersonForm(model, model.ID);
+                return View(model);
+            }
+        }
+
+        private void NormalizeSalesPersonForm(SalesPersonFormViewModel model)
+        {
+            model.Name = model.Name?.Trim() ?? string.Empty;
+            model.Designation = string.IsNullOrWhiteSpace(model.Designation) ? null : model.Designation.Trim();
+            model.PODIds = PODAssignment.Normalize(model.PODIds).ToList();
+        }
+
+        private void ValidateSalesPersonForm(SalesPersonFormViewModel model, int? editingId)
+        {
+            if (model.PODIds.Any(id => id <= 0))
+            {
+                ModelState.AddModelError(nameof(model.PODIds), "One or more selected PODs are invalid.");
+            }
+
+            var validPodIds = model.PODIds.Where(id => id > 0).Distinct().ToList();
+            var existingPodIds = _podRepository.GetExistingIds(validPodIds).ToHashSet();
+            var missingPodIds = validPodIds.Where(id => !existingPodIds.Contains(id)).ToList();
+            if (missingPodIds.Count > 0)
+            {
+                ModelState.AddModelError(
+                    nameof(model.PODIds),
+                    "One or more selected PODs no longer exist. Refresh the page and choose again.");
+            }
+
+            var allPeople = _salesPersonRepository.GetAll().ToList();
+            var hierarchyError = HierarchyValidator.ValidateAssignment(
+                editingId ?? 0,
+                model.Designation,
+                model.ManagerId,
+                allPeople);
+            if (!string.IsNullOrWhiteSpace(hierarchyError))
+            {
+                ModelState.AddModelError(nameof(model.ManagerId), hierarchyError);
+            }
+        }
+
+        private static SalesPerson MapToSalesPerson(SalesPersonFormViewModel model)
+        {
+            return new SalesPerson
+            {
+                ID = model.ID,
+                Name = model.Name,
+                Designation = model.Designation,
+                ManagerId = model.ManagerId
+            };
+        }
+
+        private void LoadSalesPersonForm(SalesPersonFormViewModel model, int? excludeId = null)
+        {
+            model.Managers = _salesPersonRepository.GetAll()
+                .Where(p => p.ID != excludeId)
+                .OrderBy(p => p.Name)
+                .ToList();
+
+            var pods = _podRepository.GetAll().OrderBy(p => p.Name).ToList();
+            var stations = _podStationRepository.GetAll()
+                .GroupBy(s => s.ID)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            model.AvailablePODs = pods;
+            model.Stations = stations;
+            model.DesignationOptions = HierarchyValidator.GetDesignationLevelMap().Keys
+                .Select(key => key switch
+                {
+                    "cxo" => "CXO",
+                    "head" => "Head",
+                    "sales manager" => "Sales Manager",
+                    "supervisor" => "Supervisor",
+                    "sales manager/supervisor" => "Sales Manager/Supervisor",
+                    "sales manager / supervisor" => "Sales Manager / Supervisor",
+                    "sales officer" => "Sales Officer",
+                    _ => key
+                })
+                .Concat(_salesPersonRepository.GetAll()
+                    .Select(p => p.Designation)
+                    .Where(d => !string.IsNullOrWhiteSpace(d))
+                    .Select(d => d!.Trim()))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(d => d)
+                .ToList();
         }
 
         public IActionResult DeleteSalesPerson(int id)
