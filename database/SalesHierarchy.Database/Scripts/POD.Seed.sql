@@ -1,7 +1,7 @@
 -- Seed POD master data from the reviewed pods.xlsx `pod` sheet.
 --
 -- SOURCE STATUS: `pods.xlsx` and `Sales Mapping With Dealer and POD.xlsx` were
--- reviewed on 2026-10-29. The applied POD/station rows are in
+-- reviewed on 2026-10-29. The applied POD/station/ownership rows are in
 -- Import-ReviewedSalesData.sql. This template remains for future reviewed batches.
 -- No POD rows or station relationships are invented here. Add verified rows to
 -- @Source, review the unresolved-station report, then execute this script.
@@ -9,25 +9,27 @@
 -- Columns:
 --   OSSPODID         = the workbook PODId column (stored in POD.OSSPODID)
 --   Name             = the workbook PODName column
---   OSSPODStationId  = NULL unless the authoritative source contains the POD's station.
---                      This script never guesses a station from names, numbers or row order.
+--   OSSPODStationId  = optional external station ID. Leave NULL when the
+--                      authoritative source has no verified station; station
+--                      assignment is managed separately in the web application.
 --
--- Because dbo.POD.PODStationId is NOT NULL, a POD without a verified station is
--- reported as unresolved and is not inserted. The station must be supplied by the
--- authoritative data owner before those POD rows can be seeded.
+-- PODStationId is nullable in the target schema, so a POD without a verified
+-- station is inserted with PODStationId = NULL and can be assigned later.
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 
 DECLARE @Source TABLE
 (
-    OSSPODID NVARCHAR(50) NOT NULL,
-    Name NVARCHAR(400) NOT NULL,
-    OSSPODStationId NVARCHAR(50) NULL
+    OSSPODID INT NOT NULL,
+    Name NVARCHAR(150) NOT NULL,
+    OSSPODStationId INT NULL
 );
 
 -- Add verified workbook rows here, for example:
 -- INSERT INTO @Source (OSSPODID, Name, OSSPODStationId) VALUES
---     (N'...', N'...', NULL);
+--     (1, N'Samakhusi', NULL);
 
 IF NOT EXISTS (SELECT 1 FROM @Source)
 BEGIN
@@ -51,27 +53,27 @@ BEGIN TRANSACTION;
 -- Resolve internal station IDs through the verified external station IDs.
 DECLARE @Resolved TABLE
 (
-    OSSPODID NVARCHAR(50) NOT NULL,
-    Name NVARCHAR(400) NOT NULL,
-    PODStationId INT NOT NULL
+    OSSPODID INT NOT NULL,
+    Name NVARCHAR(150) NOT NULL,
+    PODStationId INT NULL
 );
 
 INSERT INTO @Resolved (OSSPODID, Name, PODStationId)
 SELECT s.OSSPODID, s.Name, st.ID
 FROM @Source AS s
-INNER JOIN dbo.PODStation AS st
+LEFT JOIN dbo.PODStation AS st
     ON st.OSSPODStationId = s.OSSPODStationId;
 
--- Report PODs that cannot be inserted because the source has no verified station.
+-- Report source rows whose provisional station ID cannot be resolved.
 SELECT s.OSSPODID, s.Name, s.OSSPODStationId, N'Missing or unknown station' AS Reason
 FROM @Source AS s
-WHERE s.OSSPODStationId IS NULL
-   OR NOT EXISTS
-   (
-       SELECT 1
-       FROM dbo.PODStation AS st
-       WHERE st.OSSPODStationId = s.OSSPODStationId
-   );
+WHERE s.OSSPODStationId IS NOT NULL
+  AND NOT EXISTS
+  (
+      SELECT 1
+      FROM dbo.PODStation AS st
+      WHERE st.OSSPODStationId = s.OSSPODStationId
+  );
 
 -- Report reviewed differences instead of overwriting existing master data.
 SELECT r.OSSPODID, r.Name AS SourceName, p.Name AS ExistingName,
@@ -80,7 +82,7 @@ FROM @Resolved AS r
 INNER JOIN dbo.POD AS p
     ON p.OSSPODID = r.OSSPODID
 WHERE p.Name <> r.Name
-   OR p.PODStationId <> r.PODStationId;
+   OR (p.PODStationId <> r.PODStationId AND r.PODStationId IS NOT NULL);
 
 INSERT INTO dbo.POD (OSSPODID, Name, PODStationId)
 SELECT r.OSSPODID, r.Name, r.PODStationId

@@ -46,7 +46,7 @@ else
                         <option value="@action" selected="@(action == selectedAction)">@action</option>
                     }
                 </select>
-                <input type="search" name="q" value="@query" class="form-control form-control-sm" style="max-width: 280px;" placeholder="Search summary, e-mail, entity, or ID..." />
+                <input type="search" name="q" value="@query" class="form-control form-control-sm" style="max-width: 280px;" placeholder="Search summary, e-mail, entity, or Id..." />
                 <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search me-1"></i>Filter</button>
                 @if (!string.IsNullOrWhiteSpace(selectedAction) || !string.IsNullOrWhiteSpace(query))
                 {
@@ -61,7 +61,7 @@ else
                 <div class="empty-state">
                     <i class="bi bi-clock-history"></i>
                     <div class="fw-semibold">No activity recorded</div>
-                    <div class="text-hint small">Changes to your team, accounts, PODs, and dealer mappings will appear here.</div>
+                    <div class="text-hint small">Changes to your team, accounts, Pods, and dealer mappings will appear here.</div>
                 </div>
             }
             else

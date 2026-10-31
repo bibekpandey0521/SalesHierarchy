@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace SalesHierarchy.Core.Models
@@ -7,8 +7,7 @@ namespace SalesHierarchy.Core.Models
     {
         public int UniqueID { get; set; }
 
-        [Required(ErrorMessage = "Dealer name is required.")]
-        [StringLength(200, ErrorMessage = "Dealer name must be 200 characters or fewer.")]
+        [StringLength(150, ErrorMessage = "Dealer name must be 150 characters or fewer.")]
         [Display(Name = "Dealer name")]
         public string Name { get; set; } = string.Empty;
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -24,7 +24,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             var list = new List<SalesPerson>();
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
-            using var cmd = new SqlCommand("SELECT ID, Name, Designation, ManagerId FROM SalesPerson ORDER BY Name", conn);
+            using var cmd = new SqlCommand("SELECT Id, Name, Designation, ManagerId FROM SalesPerson ORDER BY Name", conn);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -37,7 +37,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
         {
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
-            using var cmd = new SqlCommand("SELECT ID, Name, Designation, ManagerId FROM SalesPerson WHERE ID = @id", conn);
+            using var cmd = new SqlCommand("SELECT Id, Name, Designation, ManagerId FROM SalesPerson WHERE Id = @id", conn);
             cmd.Parameters.AddWithValue("@id", id);
             using var reader = cmd.ExecuteReader();
             return reader.Read() ? Map(reader) : null;
@@ -48,7 +48,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             var list = new List<SalesPerson>();
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
-            using var cmd = new SqlCommand("SELECT ID, Name, Designation, ManagerId FROM SalesPerson WHERE ManagerId = @managerId ORDER BY Name", conn);
+            using var cmd = new SqlCommand("SELECT Id, Name, Designation, ManagerId FROM SalesPerson WHERE ManagerId = @managerId ORDER BY Name", conn);
             cmd.Parameters.AddWithValue("@managerId", managerId);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -67,19 +67,15 @@ namespace SalesHierarchy.Infrastructure.Repositories
             return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
         }
 
-        public IReadOnlyList<int> GetPODIds(int salesPersonId)
+        public IReadOnlyList<int> GetPodIds(int salesPersonId)
         {
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
             using var cmd = new SqlCommand(
-                @"SELECT PODId
-                  FROM dbo.SalesPersonPOD
+                @"SELECT PodId
+                  FROM dbo.SalesPersonPod
                   WHERE SalesPersonId = @sp
-                  UNION
-                  SELECT ID
-                  FROM dbo.POD
-                  WHERE salespersonId = @sp
-                  ORDER BY PODId", conn);
+                  ORDER BY PodId", conn);
             cmd.Parameters.AddWithValue("@sp", salesPersonId);
 
             var ids = new List<int>();
@@ -91,6 +87,161 @@ namespace SalesHierarchy.Infrastructure.Repositories
             return ids;
         }
 
+        public IReadOnlyList<SalesPersonPod> GetAllPodAssignments()
+        {
+            var list = new List<SalesPersonPod>();
+            using var conn = (SqlConnection)_factory.CreateConnection();
+            conn.Open();
+            using var cmd = new SqlCommand(
+                "SELECT SalesPersonId, PodId FROM dbo.SalesPersonPod ORDER BY PodId, SalesPersonId", conn);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new SalesPersonPod
+                {
+                    SalesPersonId = reader.GetInt32(0),
+                    PodId = reader.GetInt32(1)
+                });
+            }
+            return list;
+        }
+
+        public bool AssignPod(int salesPersonId, int podId)
+        {
+            using var conn = (SqlConnection)_factory.CreateConnection();
+            conn.Open();
+            using var tx = conn.BeginTransaction();
+
+            try
+            {
+                using (var check = new SqlCommand(
+                    @"SELECT
+                      (SELECT COUNT(1) FROM dbo.SalesPerson WHERE Id = @sp) +
+                      (SELECT COUNT(1) FROM dbo.Pod WHERE Id = @pod)",
+                    conn,
+                    tx))
+                {
+                    check.Parameters.AddWithValue("@sp", salesPersonId);
+                    check.Parameters.AddWithValue("@pod", podId);
+                    if (Convert.ToInt32(check.ExecuteScalar()) != 2)
+                    {
+                        throw new InvalidOperationException("The selected salesperson or Pod no longer exists.");
+                    }
+                }
+
+                InsertMappingIfMissing(conn, tx, salesPersonId, podId);
+                SyncLegacyOwner(conn, tx, salesPersonId, podId);
+                tx.Commit();
+                return true;
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+        public bool RemovePod(int salesPersonId, int podId)
+        {
+            using var conn = (SqlConnection)_factory.CreateConnection();
+            conn.Open();
+            using var tx = conn.BeginTransaction();
+
+            try
+            {
+                int removed;
+                using (var delete = new SqlCommand(
+                    "DELETE FROM dbo.SalesPersonPod WHERE SalesPersonId = @sp AND PodId = @pod",
+                    conn,
+                    tx))
+                {
+                    delete.Parameters.AddWithValue("@sp", salesPersonId);
+                    delete.Parameters.AddWithValue("@pod", podId);
+                    removed = delete.ExecuteNonQuery();
+                }
+
+                SyncLegacyOwnerAfterRemoval(conn, tx, salesPersonId, podId);
+                tx.Commit();
+                return removed > 0;
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+        public bool ReplacePodOwners(int podId, IReadOnlyCollection<int> salesPersonIds)
+        {
+            var owners = PodAssignment.Normalize(salesPersonIds);
+            if (owners.Any(id => id <= 0))
+            {
+                throw new ArgumentOutOfRangeException(nameof(salesPersonIds), "Salesperson identifiers must be positive.");
+            }
+
+            using var conn = (SqlConnection)_factory.CreateConnection();
+            conn.Open();
+            using var tx = conn.BeginTransaction();
+
+            try
+            {
+                using (var podCheck = new SqlCommand("SELECT COUNT(1) FROM dbo.Pod WHERE Id = @pod", conn, tx))
+                {
+                    podCheck.Parameters.AddWithValue("@pod", podId);
+                    if (Convert.ToInt32(podCheck.ExecuteScalar()) == 0)
+                    {
+                        throw new InvalidOperationException("The selected Pod no longer exists.");
+                    }
+                }
+
+                if (owners.Count > 0)
+                {
+                    var names = new List<string>();
+                    using var check = new SqlCommand { Connection = conn, Transaction = tx };
+                    for (var i = 0; i < owners.Count; i++)
+                    {
+                        var name = "@owner" + i;
+                        names.Add(name);
+                        check.Parameters.Add(name, SqlDbType.Int).Value = owners[i];
+                    }
+                    check.CommandText = $"SELECT COUNT(1) FROM dbo.SalesPerson WHERE Id IN ({string.Join(", ", names)})";
+                    if (Convert.ToInt32(check.ExecuteScalar()) != owners.Count)
+                    {
+                        throw new InvalidOperationException("One or more selected salespeople no longer exist.");
+                    }
+                }
+
+                using (var delete = new SqlCommand("DELETE FROM dbo.SalesPersonPod WHERE PodId = @pod", conn, tx))
+                {
+                    delete.Parameters.AddWithValue("@pod", podId);
+                    delete.ExecuteNonQuery();
+                }
+
+                foreach (var ownerId in owners)
+                {
+                    InsertMappingIfMissing(conn, tx, ownerId, podId);
+                }
+
+                using (var sync = new SqlCommand(
+                    "UPDATE dbo.Pod SET salespersonId = @owner WHERE Id = @pod",
+                    conn,
+                    tx))
+                {
+                    sync.Parameters.AddWithValue("@owner", (object?)owners.FirstOrDefault() ?? DBNull.Value);
+                    sync.Parameters.AddWithValue("@pod", podId);
+                    sync.ExecuteNonQuery();
+                }
+
+                tx.Commit();
+                return true;
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
         public int Add(SalesPerson person)
         {
             using var conn = (SqlConnection)_factory.CreateConnection();
@@ -100,12 +251,12 @@ namespace SalesHierarchy.Infrastructure.Repositories
             return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
-        public int AddWithPODs(SalesPerson person, IReadOnlyCollection<int> podIds)
+        public int AddWithPods(SalesPerson person, IReadOnlyCollection<int> podIds)
         {
-            var normalizedPodIds = PODAssignment.Normalize(podIds);
+            var normalizedPodIds = PodAssignment.Normalize(podIds);
             if (normalizedPodIds.Any(id => id <= 0))
             {
-                throw new ArgumentOutOfRangeException(nameof(podIds), "POD identifiers must be positive.");
+                throw new ArgumentOutOfRangeException(nameof(podIds), "Pod identifiers must be positive.");
             }
 
             using var conn = (SqlConnection)_factory.CreateConnection();
@@ -114,7 +265,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
 
             try
             {
-                ValidatePODIds(conn, tx, normalizedPodIds);
+                ValidatePodIds(conn, tx, normalizedPodIds);
 
                 int personId;
                 using (var cmd = new SqlCommand(
@@ -146,18 +297,18 @@ namespace SalesHierarchy.Infrastructure.Repositories
         {
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
-            using var cmd = new SqlCommand("UPDATE SalesPerson SET Name = @name, Designation = @designation, ManagerId = @managerId WHERE ID = @id", conn);
-            cmd.Parameters.AddWithValue("@id", person.ID);
+            using var cmd = new SqlCommand("UPDATE SalesPerson SET Name = @name, Designation = @designation, ManagerId = @managerId WHERE Id = @id", conn);
+            cmd.Parameters.AddWithValue("@id", person.Id);
             AddPersonParameters(cmd, person);
             return cmd.ExecuteNonQuery() > 0;
         }
 
-        public bool UpdateWithPODs(SalesPerson person, IReadOnlyCollection<int> podIds)
+        public bool UpdateWithPods(SalesPerson person, IReadOnlyCollection<int> podIds)
         {
-            var submitted = PODAssignment.Normalize(podIds);
+            var submitted = PodAssignment.Normalize(podIds);
             if (submitted.Any(id => id <= 0))
             {
-                throw new ArgumentOutOfRangeException(nameof(podIds), "POD identifiers must be positive.");
+                throw new ArgumentOutOfRangeException(nameof(podIds), "Pod identifiers must be positive.");
             }
 
             using var conn = (SqlConnection)_factory.CreateConnection();
@@ -166,14 +317,14 @@ namespace SalesHierarchy.Infrastructure.Repositories
 
             try
             {
-                ValidatePODIds(conn, tx, submitted);
+                ValidatePodIds(conn, tx, submitted);
 
                 using (var cmd = new SqlCommand(
-                    "UPDATE SalesPerson SET Name = @name, Designation = @designation, ManagerId = @managerId WHERE ID = @id",
+                    "UPDATE SalesPerson SET Name = @name, Designation = @designation, ManagerId = @managerId WHERE Id = @id",
                     conn,
                     tx))
                 {
-                    cmd.Parameters.AddWithValue("@id", person.ID);
+                    cmd.Parameters.AddWithValue("@id", person.Id);
                     AddPersonParameters(cmd, person);
                     if (cmd.ExecuteNonQuery() == 0)
                     {
@@ -182,30 +333,30 @@ namespace SalesHierarchy.Infrastructure.Repositories
                     }
                 }
 
-                var existing = GetPODIds(conn, tx, person.ID);
-                var (_, toRemove) = PODAssignment.Diff(existing, submitted);
+                var existing = GetPodIds(conn, tx, person.Id);
+                var (_, toRemove) = PodAssignment.Diff(existing, submitted);
 
                 foreach (var podId in toRemove)
                 {
                     using (var delete = new SqlCommand(
-                        "DELETE FROM dbo.SalesPersonPOD WHERE SalesPersonId = @sp AND PODId = @pod",
+                        "DELETE FROM dbo.SalesPersonPod WHERE SalesPersonId = @sp AND PodId = @pod",
                         conn,
                         tx))
                     {
-                        delete.Parameters.AddWithValue("@sp", person.ID);
+                        delete.Parameters.AddWithValue("@sp", person.Id);
                         delete.Parameters.AddWithValue("@pod", podId);
                         delete.ExecuteNonQuery();
                     }
 
-                    SyncLegacyOwnerAfterRemoval(conn, tx, person.ID, podId);
+                    SyncLegacyOwnerAfterRemoval(conn, tx, person.Id, podId);
                 }
 
-                // Insert every submitted ID. This also promotes a verified legacy-only
-                // assignment into the many-to-many table when the form is saved.
+                // Insert every submitted Id. SalesPersonPod is the source of truth;
+                // the legacy owner column is synchronised where it is safe to do so.
                 foreach (var podId in submitted)
                 {
-                    InsertMappingIfMissing(conn, tx, person.ID, podId);
-                    SyncLegacyOwner(conn, tx, person.ID, podId);
+                    InsertMappingIfMissing(conn, tx, person.Id, podId);
+                    SyncLegacyOwner(conn, tx, person.Id, podId);
                 }
 
                 tx.Commit();
@@ -222,21 +373,17 @@ namespace SalesHierarchy.Infrastructure.Repositories
         {
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
-            using var cmd = new SqlCommand("DELETE FROM SalesPerson WHERE ID = @id", conn);
+            using var cmd = new SqlCommand("DELETE FROM SalesPerson WHERE Id = @id", conn);
             cmd.Parameters.AddWithValue("@id", id);
             return cmd.ExecuteNonQuery() > 0;
         }
 
-        private static IReadOnlyList<int> GetPODIds(SqlConnection conn, SqlTransaction tx, int salesPersonId)
+        private static IReadOnlyList<int> GetPodIds(SqlConnection conn, SqlTransaction tx, int salesPersonId)
         {
             using var cmd = new SqlCommand(
-                @"SELECT PODId
-                  FROM dbo.SalesPersonPOD
-                  WHERE SalesPersonId = @sp
-                  UNION
-                  SELECT ID
-                  FROM dbo.POD
-                  WHERE salespersonId = @sp",
+                @"SELECT PodId
+                  FROM dbo.SalesPersonPod
+                  WHERE SalesPersonId = @sp",
                 conn,
                 tx);
             cmd.Parameters.AddWithValue("@sp", salesPersonId);
@@ -250,7 +397,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             return ids;
         }
 
-        private static void ValidatePODIds(
+        private static void ValidatePodIds(
             SqlConnection conn,
             SqlTransaction tx,
             IReadOnlyCollection<int> podIds)
@@ -270,11 +417,11 @@ namespace SalesHierarchy.Infrastructure.Repositories
                 cmd.Parameters.Add(name, SqlDbType.Int).Value = podId;
             }
 
-            cmd.CommandText = $"SELECT COUNT(1) FROM dbo.POD WHERE ID IN ({string.Join(", ", parameterNames)})";
+            cmd.CommandText = $"SELECT COUNT(1) FROM dbo.Pod WHERE Id IN ({string.Join(", ", parameterNames)})";
             var found = Convert.ToInt32(cmd.ExecuteScalar());
             if (found != podIds.Count)
             {
-                throw new InvalidOperationException("One or more selected PODs no longer exist.");
+                throw new InvalidOperationException("One or more selected Pods no longer exist.");
             }
         }
 
@@ -285,13 +432,13 @@ namespace SalesHierarchy.Infrastructure.Repositories
             int podId)
         {
             using var cmd = new SqlCommand(
-                @"INSERT INTO dbo.SalesPersonPOD (SalesPersonId, PODId)
+                @"INSERT INTO dbo.SalesPersonPod (SalesPersonId, PodId)
                   SELECT @sp, @pod
                   WHERE NOT EXISTS
                   (
                       SELECT 1
-                      FROM dbo.SalesPersonPOD
-                      WHERE SalesPersonId = @sp AND PODId = @pod
+                      FROM dbo.SalesPersonPod
+                      WHERE SalesPersonId = @sp AND PodId = @pod
                   )",
                 conn,
                 tx);
@@ -309,9 +456,9 @@ namespace SalesHierarchy.Infrastructure.Repositories
             // Keep the legacy single-owner column useful for older screens, but never
             // overwrite a different salesperson's existing assignment.
             using var cmd = new SqlCommand(
-                @"UPDATE dbo.POD
+                @"UPDATE dbo.Pod
                   SET salespersonId = @sp
-                  WHERE ID = @pod
+                  WHERE Id = @pod
                     AND (salespersonId IS NULL OR salespersonId = @sp)",
                 conn,
                 tx);
@@ -330,14 +477,14 @@ namespace SalesHierarchy.Infrastructure.Repositories
             // remaining mapping (if any) or clear it. Explicitly sync the many-to-many
             // table as the source of truth.
             using var cmd = new SqlCommand(
-                @"UPDATE dbo.POD
+                @"UPDATE dbo.Pod
                   SET salespersonId =
                   (
                       SELECT MIN(SalesPersonId)
-                      FROM dbo.SalesPersonPOD
-                      WHERE PODId = @pod
+                      FROM dbo.SalesPersonPod
+                      WHERE PodId = @pod
                   )
-                  WHERE ID = @pod
+                  WHERE Id = @pod
                     AND (salespersonId = @sp OR salespersonId IS NULL)",
                 conn,
                 tx);
@@ -357,7 +504,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
         {
             return new SalesPerson
             {
-                ID = (int)reader["ID"],
+                Id = (int)reader["Id"],
                 Name = reader["Name"].ToString() ?? string.Empty,
                 Designation = reader["Designation"] as string,
                 ManagerId = reader["ManagerId"] == DBNull.Value ? null : (int)reader["ManagerId"]

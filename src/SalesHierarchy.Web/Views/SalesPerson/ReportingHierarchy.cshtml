@@ -1,4 +1,4 @@
-﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
+@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
 @using SalesHierarchy.Core.Models
 @using SalesHierarchy.Web.ViewModels
 @{
@@ -11,17 +11,17 @@
         .Where(p => p.ManagerId.HasValue)
         .GroupBy(p => p.ManagerId!.Value)
         .ToDictionary(g => g.Key, g => g.OrderBy(p => p.Name).ToList());
-    var directReportCount = current == null ? 0 : reports.Count(p => p.ManagerId == current.ID);
+    var directReportCount = current == null ? 0 : reports.Count(p => p.ManagerId == current.Id);
 
     HierarchyNode BuildNode(SalesPerson person, HashSet<int> path)
     {
         var node = new HierarchyNode
         {
             Person = person,
-            IsCurrent = current != null && person.ID == current.ID
+            IsCurrent = current != null && person.Id == current.Id
         };
 
-        if (!path.Add(person.ID) || !childrenByManager.TryGetValue(person.ID, out var children))
+        if (!path.Add(person.Id) || !childrenByManager.TryGetValue(person.Id, out var children))
         {
             return node;
         }

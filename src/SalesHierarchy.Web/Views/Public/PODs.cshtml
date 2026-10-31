@@ -1,11 +1,11 @@
-﻿@model IEnumerable<SalesHierarchy.Core.DTOs.PublicPODDto>
+@model IEnumerable<SalesHierarchy.Core.DTOs.PublicPodDto>
 @{
-    ViewData["Title"] = "PODs";
+    ViewData["Title"] = "Pods";
     var query = ViewBag.Query as string;
 }
 <div class="page-head">
     <div>
-        <h1 class="page-title">PODs</h1>
+        <h1 class="page-title">Pods</h1>
         <p class="page-subtitle">Approved point-of-distribution directory.</p>
     </div>
     <a asp-action="Index" class="btn btn-ghost">Directory home</a>
@@ -14,17 +14,17 @@
 <div class="card-clean">
     <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
         <form method="get" class="d-flex gap-2">
-            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search PODs..." />
+            <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search Pods..." />
             <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search"></i></button>
         </form>
-        <span class="text-hint small">@Model.Count() POD(s)</span>
+        <span class="text-hint small">@Model.Count() Pod(s)</span>
     </div>
     <div class="card-body p-0">
         @if (!Model.Any())
         {
             <div class="empty-state">
                 <i class="bi bi-geo-alt"></i>
-                <div class="fw-semibold">No matching PODs</div>
+                <div class="fw-semibold">No matching Pods</div>
                 <div class="text-hint small">Try a different search term.</div>
             </div>
         }
@@ -32,13 +32,13 @@
         {
             <div class="table-responsive">
                 <table class="table table-clean mb-0">
-                    <thead><tr><th>POD</th><th>OSS POD Id</th></tr></thead>
+                    <thead><tr><th>Pod</th><th>OSS Pod Id</th></tr></thead>
                     <tbody>
                     @foreach (var pod in Model)
                     {
                         <tr>
                             <td class="fw-medium">@pod.Name</td>
-                            <td class="mono text-hint">@(string.IsNullOrWhiteSpace(pod.OSSPODID) ? "—" : pod.OSSPODID)</td>
+                            <td class="mono text-hint">@pod.OSSPODID</td>
                         </tr>
                     }
                     </tbody>

@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Public Directory";
 }
 <div class="public-page">
@@ -9,7 +9,7 @@
             <p>Read-only, approved information about the sales organization. No sign-in required, and no internal account data is ever published.</p>
             <div class="public-hero-actions">
                 <a class="btn btn-brand" asp-action="SalesHierarchy"><i class="bi bi-diagram-3 me-1"></i>Browse hierarchy</a>
-                <a class="btn btn-ghost" asp-action="PODs"><i class="bi bi-geo-alt me-1"></i>View PODs</a>
+                <a class="btn btn-ghost" asp-action="Pods"><i class="bi bi-geo-alt me-1"></i>View Pods</a>
             </div>
         </div>
         <div class="public-hero-panel">
@@ -18,13 +18,13 @@
                 <span class="public-stat-label">Salespersons</span>
                 <span class="public-stat-value">@ViewBag.SalesPersonCount<i class="bi bi-arrow-up-right"></i></span>
             </a>
-            <a class="public-stat-row" asp-action="PODStations">
-                <span class="public-stat-label">POD stations</span>
-                <span class="public-stat-value">@ViewBag.PODStationCount<i class="bi bi-arrow-up-right"></i></span>
+            <a class="public-stat-row" asp-action="PodStations">
+                <span class="public-stat-label">Pod stations</span>
+                <span class="public-stat-value">@ViewBag.PodStationCount<i class="bi bi-arrow-up-right"></i></span>
             </a>
-            <a class="public-stat-row" asp-action="PODs">
-                <span class="public-stat-label">PODs</span>
-                <span class="public-stat-value">@ViewBag.PODCount<i class="bi bi-arrow-up-right"></i></span>
+            <a class="public-stat-row" asp-action="Pods">
+                <span class="public-stat-label">Pods</span>
+                <span class="public-stat-value">@ViewBag.PodCount<i class="bi bi-arrow-up-right"></i></span>
             </a>
         </div>
     </section>
@@ -37,7 +37,7 @@
                     <p class="public-section-subtitle">Only approved directory fields are exposed on public pages.</p>
                     <ul class="check-list mb-0">
                         <li><i class="bi bi-check2"></i>Approved salesperson names, designations, and reporting lines.</li>
-                        <li><i class="bi bi-check2"></i>Approved POD station and POD names.</li>
+                        <li><i class="bi bi-check2"></i>Approved Pod station and Pod names.</li>
                         <li><i class="bi bi-x-circle"></i>Emails, dealer mappings, account details, and all internal data stay private.</li>
                     </ul>
                 </div>

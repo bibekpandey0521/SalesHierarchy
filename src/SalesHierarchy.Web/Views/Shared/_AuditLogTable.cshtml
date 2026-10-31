@@ -2,7 +2,7 @@
 @{
     string BadgeClass(string action) => action switch
     {
-        "Create" or "AddMapping" or "Enable" or "AssignPOD" or "Seed" => "badge-soft-success",
+        "Create" or "AddMapping" or "Enable" or "AssignPod" or "Seed" => "badge-soft-success",
         "Delete" or "RemoveMapping" or "Disable" or "InviteResent" => "badge-soft-warning",
         "Update" or "Import" or "PasswordSet" => "badge-soft-neutral",
         _ => "badge-soft-neutral"
@@ -39,7 +39,7 @@
                 <td class="text-end">
                     @if (!string.IsNullOrWhiteSpace(entry.Details))
                     {
-                        <button class="btn btn-sm btn-ghost" type="button" data-bs-toggle="collapse" data-bs-target="#audit-details-@entry.ID" aria-expanded="false" aria-controls="audit-details-@entry.ID" title="Show before/after data">
+                        <button class="btn btn-sm btn-ghost" type="button" data-bs-toggle="collapse" data-bs-target="#audit-details-@entry.Id" aria-expanded="false" aria-controls="audit-details-@entry.Id" title="Show before/after data">
                             <i class="bi bi-code-square"></i>
                         </button>
                     }
@@ -47,7 +47,7 @@
             </tr>
             @if (!string.IsNullOrWhiteSpace(entry.Details))
             {
-                <tr class="collapse" id="audit-details-@entry.ID">
+                <tr class="collapse" id="audit-details-@entry.Id">
                     <td colspan="6" class="bg-light">
                         <pre class="mb-0 small text-wrap">@entry.Details</pre>
                     </td>

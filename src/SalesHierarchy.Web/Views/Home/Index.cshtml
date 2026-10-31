@@ -1,14 +1,14 @@
-﻿@model SalesHierarchy.Web.ViewModels.HomeViewModel
+@model SalesHierarchy.Web.ViewModels.HomeViewModel
 @using SalesHierarchy.Core.Models
 @{
     ViewData["Title"] = Model.IsAuthenticated ? "Organization overview" : "SalesHierarchy";
     var growthMax = Model.Growth.Count == 0 ? 0 : Model.Growth.Max(g => g.Value);
     var activityController = Model.IsAdmin ? "Admin" : "SalesPerson";
     var activityAction = Model.IsAdmin ? "AuditLog" : "TeamActivity";
-    var podController = Model.IsAdmin ? "Admin" : "SalesPerson";
-    var podAction = Model.IsAdmin ? "PODs" : "MyPODs";
-    var addEmployeeController = Model.IsAdmin ? "Admin" : "SalesPerson";
-    var addEmployeeAction = Model.IsAdmin ? "CreateSalesPerson" : "CreateTeamMember";
+    var podController = Model.IsAdmin ? "AdminPod" : "SalesPerson";
+    var podAction = Model.IsAdmin ? "Index" : "MyPods";
+    var addEmployeeController = Model.IsAdmin ? "AdminSalesPerson" : "SalesPerson";
+    var addEmployeeAction = Model.IsAdmin ? "Create" : "CreateTeamMember";
 }
 
 @section Styles {
@@ -23,7 +23,7 @@
             <div class="hero-copy">
                 <span class="badge-soft-neutral mb-2 d-inline-block">Enterprise sales operations</span>
                 <h1 class="hero-title">A single source of truth for your sales hierarchy</h1>
-                <p class="hero-subtitle">Manage salespeople, POD stations, dealers, and reporting lines with role-based access and secure account invitations.</p>
+                <p class="hero-subtitle">Manage salespeople, Pod stations, dealers, and reporting lines with role-based access and secure account invitations.</p>
                 <div class="d-flex flex-wrap gap-2">
                     <a class="btn btn-brand" asp-controller="Public" asp-action="Index"><i class="bi bi-globe2"></i>Browse public directory</a>
                     <a class="btn btn-ghost" asp-controller="Account" asp-action="Login"><i class="bi bi-box-arrow-in-right"></i>Sign in</a>
@@ -69,7 +69,7 @@
                     <div class="card-body">
                         <i class="bi bi-shop feature-icon"></i>
                         <div class="fw-semibold mt-3">Assignments that stay consistent</div>
-                        <p class="text-muted small mb-0">PODs and dealers are linked through validated relationships with duplicate protection and guarded deletes.</p>
+                        <p class="text-muted small mb-0">Pods and dealers are linked through validated relationships with duplicate protection and guarded deletes.</p>
                     </div>
                 </div>
             </div>
@@ -87,10 +87,12 @@
 }
 else
 {
+    <partial name="_DashboardBanner" />
+
     <div class="page-head">
         <div>
             <h1 class="page-title">Organization overview</h1>
-            <p class="page-subtitle">Welcome back, @Model.DisplayName. Here is the latest view of your people, POD coverage, and reporting lines.</p>
+            <p class="page-subtitle">Welcome back, @Model.DisplayName. Here is the latest view of your people, Pod coverage, and reporting lines.</p>
         </div>
         <div class="page-actions">
             <button type="button" class="btn btn-ghost" data-export-table="#podCoverageTable" data-export-name="saleshierarchy-overview">
@@ -131,7 +133,7 @@ else
 
         <article class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">POD stations</span>
+                <span class="metric-label">Pod stations</span>
                 <span class="metric-icon"><i class="bi bi-building"></i></span>
             </div>
             <div class="metric-value">@Model.StationCount</div>
@@ -149,7 +151,7 @@ else
 
         <article class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">Assigned PODs</span>
+                <span class="metric-label">Assigned Pods</span>
                 <span class="metric-icon"><i class="bi bi-geo-alt"></i></span>
             </div>
             <div class="metric-value">@Model.AssignedPods</div>
@@ -250,7 +252,7 @@ else
                     <ol class="activity-list">
                         @foreach (var log in Model.Activity)
                         {
-                            var accent = log.Action is "Create" or "Import" or "PasswordSet" or "AssignPOD";
+                            var accent = log.Action is "Create" or "Import" or "PasswordSet" or "AssignPod";
                             var success = log.Action is "Delete" or "Disable";
                             <li class="activity-item @(accent ? "is-accent" : "") @(success ? "is-success" : "")">
                                 <div class="activity-copy">
@@ -269,11 +271,11 @@ else
     <section class="dashboard-card">
         <div class="dashboard-card-head">
             <div>
-                <h2 class="dashboard-card-title">POD coverage</h2>
+                <h2 class="dashboard-card-title">Pod coverage</h2>
                 <p class="dashboard-card-subtitle">Recent points of distribution and their station owners</p>
             </div>
             <a class="btn btn-ghost btn-sm" asp-controller="@podController" asp-action="@podAction">
-                View all PODs <i class="bi bi-arrow-right"></i>
+                View all Pods <i class="bi bi-arrow-right"></i>
             </a>
         </div>
         <div class="dashboard-card-body is-flush">
@@ -281,8 +283,8 @@ else
             {
                 <div class="empty-state">
                     <i class="bi bi-geo-alt"></i>
-                    <div class="fw-semibold">No PODs to show yet</div>
-                    <div class="text-hint small">Create a POD and assign it to a station and salesperson.</div>
+                    <div class="fw-semibold">No Pods to show yet</div>
+                    <div class="text-hint small">Create a Pod and assign it to a station and salesperson.</div>
                 </div>
             }
             else
@@ -291,7 +293,7 @@ else
                     <table class="table table-clean" id="podCoverageTable">
                         <thead>
                             <tr>
-                                <th>POD</th>
+                                <th>Pod</th>
                                 <th>Station</th>
                                 <th>Assigned to</th>
                                 <th>Status</th>
@@ -304,7 +306,7 @@ else
                             <tr>
                                 <td>
                                     <div class="employee-name">@row.Pod.Name</div>
-                                    <div class="employee-sub">@(string.IsNullOrWhiteSpace(row.Pod.OSSPODID) ? "No OSS ID" : row.Pod.OSSPODID)</div>
+                                    <div class="employee-sub">OSS @row.Pod.OSSPODID</div>
                                 </td>
                                 <td>
                                     <div class="station-cell">
@@ -339,7 +341,7 @@ else
                                     }
                                 </td>
                                 <td class="text-end">
-                                    <a class="row-action" asp-controller="@podController" asp-action="@(Model.IsAdmin ? "DetailsPOD" : "MyPODs")" asp-route-id="@(Model.IsAdmin ? row.Pod.ID : (int?)null)" title="Open POD">
+                                    <a class="row-action" asp-controller="@podController" asp-action="@(Model.IsAdmin ? "Details" : "MyPods")" asp-route-id="@(Model.IsAdmin ? row.Pod.Id : (int?)null)" title="Open Pod">
                                         <i class="bi bi-arrow-right"></i>
                                     </a>
                                 </td>

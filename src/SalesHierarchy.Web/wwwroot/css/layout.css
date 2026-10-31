@@ -36,6 +36,19 @@
   color: #fff;
 }
 
+.brand-logo {
+  width: auto;
+  max-width: 132px;
+  height: 30px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.brand-logo.is-large {
+  max-width: 170px;
+  height: 38px;
+}
+
 .brand-mark {
   width: 30px;
   height: 30px;

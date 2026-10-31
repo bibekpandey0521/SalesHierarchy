@@ -17,12 +17,12 @@ Source workbooks reviewed:
 - `D:\SalesHierarchy\pods.xlsx` (`pod` and `station` sheets).
 - `D:\SalesHierarchy\Sales Mapping With Dealer and POD.xlsx` (`Sheet1`).
 
-Imported:
+Reviewed for import (the local module tables were cleared on request, so the import is re-run against the current schema):
 
 - 73 POD stations.
-- 208 PODs with a verified POD-to-station pair. The other 65 PODs in `pods.xlsx` have no station in either workbook and remain unimported because `POD.PODStationId` is `NOT NULL`.
+- All 273 PODs from `pods.xlsx`, created with `PODStationId = NULL`. Station assignment is now a separate, explicit step on **POD Assignment Management**; the import never guesses a station.
 - 34 salespeople: 4 CXO, 2 Head, 9 Sales Manager/Supervisor, 19 Sales Officer.
-- 208 POD assignments to the row's Sales Officer.
+- 208 SalesPersonPOD rows where the workbook provides a verified POD-to-officer pair.
 - 40 dealer records and 67 dealer-to-officer mappings. Dealer codes are used as both `Name` and `Code` because the workbook has no dealer names.
 
 Review exceptions intentionally left unresolved:
@@ -50,14 +50,14 @@ erDiagram
     }
     PODStation {
         int ID PK
-        nvarchar OSSPODStationId
-        nvarchar Name
+        int OSSPODStationId "unique, required"
+        nvarchar Name "required, 150 max"
     }
     POD {
         int ID PK
-        nvarchar OSSPODID
-        nvarchar Name
-        int PODStationId FK
+        int OSSPODID "unique, required"
+        nvarchar Name "required, 150 max"
+        int PODStationId FK "nullable until assigned"
         int salespersonId "legacy, nullable"
     }
     SalesPersonPOD {
@@ -78,7 +78,7 @@ erDiagram
 | `Sales Officer` | `Manager` | Includes the three manager-level spellings above |
 | Any other/custom designation | Not restricted | Legacy flexibility; still checked for existence, self-reporting, and cycles |
 
-Server-side validation in `HierarchyValidator.ValidateAssignment` rejects:
+Server-side validation in `HierarchyRules.ValidateAssignment` rejects:
 
 1. Self-reporting.
 2. A manager ID that does not exist.
@@ -259,9 +259,9 @@ The last query is informative only: a POD may intentionally be assigned to more 
 2. Paste reviewed `pods.xlsx` station rows into `@Source`.
 3. Run it and review the conflict report (existing names are never overwritten).
 4. Open `POD.Seed.sql`.
-5. Paste reviewed POD rows into `@Source`, including the external `OSSPODStationId`.
+5. Paste reviewed POD rows into `@Source`, including the external `OSSPODID`.
 6. Run it and review:
-   - `Missing or unknown station` rows: these are not inserted because `POD.PODStationId` is `NOT NULL`.
+   - PODs are inserted with `PODStationId = NULL`; station assignment is not part of the seed.
    - Existing-row differences: reported, never overwritten.
 7. Re-run either script to confirm it is idempotent.
 
@@ -269,6 +269,8 @@ The last query is informative only: a POD may intentionally be assigned to more 
 sqlcmd -S <server> -E -C -b -d SalesProdAuthDb -i .\database\SalesHierarchy.Database\Scripts\PODStation.Seed.sql
 sqlcmd -S <server> -E -C -b -d SalesProdAuthDb -i .\database\SalesHierarchy.Database\Scripts\POD.Seed.sql
 ```
+
+After seeding, assign stations to PODs on **Admin → POD Assignment Management**. The page validates that every selected POD exists, skips already-assigned PODs, writes the new assignments in a transaction, and records an audit entry. The filtered unique index `UX_POD_Station_Name` prevents two PODs with the same name in one station while allowing the same name in different stations.
 
 ### 7.3 Review a proposed hierarchy import before writing
 
@@ -285,13 +287,13 @@ sqlcmd -S <server> -E -C -b -d SalesProdAuthDb -i .\database\SalesHierarchy.Data
 What it does:
 
 1. Inserts missing POD stations, matching on source station ID or name.
-2. Inserts only PODs with a verified station, matching on source POD ID or name.
+2. Inserts all 273 reviewed PODs with `PODStationId = NULL`, matching on source POD ID or name.
 3. Inserts the 34 salespeople and resolves unambiguous manager links.
-4. Assigns each POD to its Sales Officer in `SalesPersonPOD` and syncs the legacy `POD.salespersonId` when safe.
+4. Assigns each verified POD to its Sales Officer in `SalesPersonPOD` and syncs the legacy `POD.salespersonId` when safe.
 5. Creates missing dealers (`Name = Code`) and dealer-to-officer mappings.
 6. Prints the review report and final table counts.
 
-It never updates an existing station/POD/dealer name, designation, or owner. Re-running it is safe. The 3 conflicting manager links stay `NULL` until corrected manually.
+It never updates an existing station/POD/dealer name, designation, or owner. Re-running it is safe. The 3 conflicting manager links stay `NULL` until corrected manually. Station↔POD relationships are never inferred by the import; a SystemAdmin assigns them on the POD Assignment Management page.
 
 Verify after running with the read-only verification script:
 
@@ -299,13 +301,14 @@ Verify after running with the read-only verification script:
 sqlcmd -S <server> -E -C -b -d SalesProdAuthDb -i .\database\Verify-ReviewedImport.sql
 ```
 
-Expected on the reviewed local database:
+Expected on the reviewed local database after a clean re-import:
 
-- Counts: `PODStations=75`, `PODs=211`, `SalesPeople=38`, `SalesPersonPODs=211`, `Dealers=44`, `DealerMappings=71`.
+- Counts: `PODStations=73`, `PODs=273`, `SalesPeople=34`, `SalesPersonPODs=208`, `Dealers=40`, `DealerMappings=67`.
+- All 273 PODs exist with `PODStationId = NULL` until an administrator assigns them.
 - Exactly the 3 documented ladder exceptions, all with `ManagerId = NULL`.
 - `208` workbook PODs, each with exactly one owner; `208` owned by a Sales Officer; `208` with the legacy owner synced.
 - `67` workbook dealer mappings, all to Sales Officers.
-- No duplicate station names/source IDs, POD names/source IDs, dealer codes, salesperson names, or dealer mappings.
+- No duplicate station source IDs, POD source IDs, dealer codes, salesperson names, or dealer mappings.
 
 ## 8. Manual UI checks
 
@@ -316,6 +319,9 @@ Expected on the reviewed local database:
 - Edit: existing PODs are preselected; removing all PODs and saving clears the mappings.
 - Submitting a deleted POD ID or a duplicate ID: duplicates collapse; a missing POD is rejected before any salesperson write.
 - Legacy owner check: assigning a POD to a second salesperson does not silently overwrite another salesperson's legacy `POD.salespersonId`.
+- POD stations: create with a duplicate or blank OSS station ID is rejected; deleting a station with assigned PODs is blocked with an explanatory message.
+- PODs: create/edit manages name and OSS POD ID only; a duplicate OSS POD ID is rejected; a new POD is created unassigned.
+- POD Assignment Management: choosing a station lists assigned and unassigned PODs; search filters both lists; saving assigns the selection in one transaction; clearing removes all assignments for the station after confirmation; attempting to assign the same POD twice is a no-op.
 
 ## 9. Key files
 
@@ -324,7 +330,7 @@ Expected on the reviewed local database:
 | Join table + migration | `database/SalesHierarchy.Database/Tables/SalesPersonPOD.sql`, `database/Upgrade-SalesPersonPOD.sql`, `database/SalesHierarchy.Database/Scripts/SalesPersonPOD.Migration.sql` |
 | Seed/review scripts | `database/SalesHierarchy.Database/Scripts/PODStation.Seed.sql`, `database/SalesHierarchy.Database/Scripts/POD.Seed.sql`, `database/SalesHierarchy.Database/Scripts/Import-ReviewedSalesData.sql` |
 | Import verification | `database/Verify-ReviewedImport.sql` |
-| Rules | `src/SalesHierarchy.Core/Validation/HierarchyValidator.cs`, `ReportingHierarchyImportValidator.cs`, `PODAssignment.cs` |
+| Rules | `src/SalesHierarchy.Core/Validation/HierarchyRules.cs`, `ReportingHierarchyImportValidator.cs`, `PodAssignment.cs` |
 | Persistence | `src/SalesHierarchy.Infrastructure/Repositories/SalesPersonRepository.cs`, `PODRepository.cs` |
-| UI | `src/SalesHierarchy.Web/Controllers/AdminController.cs`, `ViewModels/SalesPersonFormViewModel.cs`, `Views/Admin/CreateSalesPerson.cshtml`, `Views/Admin/EditSalesPerson.cshtml`, `wwwroot/js/pod-multiselect.js`, `wwwroot/js/hierarchy-form.js`, `wwwroot/css/pod-multiselect.css` |
-| Tests | `src/SalesHierarchy.Tests/HierarchyValidatorTests.cs`, `PODAssignmentTests.cs`, `ReportingHierarchyImportValidatorTests.cs` |
+| UI | `src/SalesHierarchy.Web/Controllers/AdminSalesPersonController.cs`, `AdminPodController.cs`, `AdminPodStationController.cs`, `ViewModels/SalesPersonFormViewModel.cs`, `Views/AdminSalesPerson/Create.cshtml`, `Views/AdminSalesPerson/Edit.cshtml`, `Views/AdminPod/PODAssignments.cshtml`, `wwwroot/js/pod-multiselect.js`, `wwwroot/js/hierarchy-form.js`, `wwwroot/css/pod-multiselect.css` |
+| Tests | `src/SalesHierarchy.Tests/HierarchyRulesTests.cs`, `PODAssignmentTests.cs`, `ReportingHierarchyImportValidatorTests.cs` |

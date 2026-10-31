@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.Data.SqlClient;
 using SalesHierarchy.Core.Interfaces.Repositories;
@@ -55,7 +55,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
         {
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM salesdealermapping WHERE dealerid = @id", conn);
+            using var cmd = new SqlCommand("SELECT COUNT(1) FROM salesdealermapping WHERE DealerId = @id", conn);
             cmd.Parameters.AddWithValue("@id", dealerId);
             return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
         }

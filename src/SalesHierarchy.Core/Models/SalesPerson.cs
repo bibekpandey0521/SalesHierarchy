@@ -1,10 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace SalesHierarchy.Core.Models
 {
     public class SalesPerson
     {
-        public int ID { get; set; }
+        public int Id { get; set; }
 
         [Required(ErrorMessage = "Name is required.")]
         [StringLength(200, ErrorMessage = "Name must be 200 characters or fewer.")]

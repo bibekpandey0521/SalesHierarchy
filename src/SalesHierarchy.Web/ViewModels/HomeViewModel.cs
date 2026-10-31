@@ -31,11 +31,11 @@ namespace SalesHierarchy.Web.ViewModels
 
     public class PodRow
     {
-        public POD Pod { get; set; } = null!;
+        public Pod Pod { get; set; } = null!;
         public string StationName { get; set; } = string.Empty;
         public string? SalesPersonName { get; set; }
 
-        public bool IsAssigned => Pod.salespersonId.HasValue && !string.IsNullOrWhiteSpace(SalesPersonName);
+        public bool IsAssigned => !string.IsNullOrWhiteSpace(SalesPersonName);
     }
 
     public class HierarchyNode

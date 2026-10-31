@@ -7,10 +7,16 @@ namespace SalesHierarchy.Tests;
 
 public class AuthorizationTests
 {
-    [Fact]
-    public void AdminController_RequiresSystemAdminRole()
+    [Theory]
+    [InlineData(typeof(AdminController))]
+    [InlineData(typeof(AdminPodStationController))]
+    [InlineData(typeof(AdminPodController))]
+    [InlineData(typeof(AdminSalesPersonController))]
+    [InlineData(typeof(AdminDealerController))]
+    [InlineData(typeof(AdminDealerMappingController))]
+    public void AdminControllers_RequireSystemAdminRole(Type controller)
     {
-        var attribute = typeof(AdminController).GetCustomAttribute<AuthorizeAttribute>();
+        var attribute = controller.GetCustomAttribute<AuthorizeAttribute>();
         Assert.NotNull(attribute);
         Assert.Equal("SystemAdmin", attribute!.Roles);
     }
@@ -40,39 +46,64 @@ public class AuthorizationTests
     [Fact]
     public void AdminMutations_ArePostAndAntiForgeryProtected()
     {
-        var mutations = new[]
+        AssertPostAndAntiForgery(typeof(AdminPodStationController), new[]
         {
-            nameof(AdminController.CreatePODStation),
-            nameof(AdminController.EditPODStation),
-            nameof(AdminController.DeletePODStationConfirmed),
-            nameof(AdminController.CreateSalesPerson),
-            nameof(AdminController.EditSalesPerson),
-            nameof(AdminController.DeleteSalesPersonConfirmed),
-            nameof(AdminController.CreatePOD),
-            nameof(AdminController.EditPOD),
-            nameof(AdminController.DeletePODConfirmed),
-            nameof(AdminController.CreateDealer),
-            nameof(AdminController.EditDealer),
-            nameof(AdminController.DeleteDealerConfirmed),
-            nameof(AdminController.CreateSalesDealerMapping),
-            nameof(AdminController.EditSalesDealerMapping),
-            nameof(AdminController.DeleteSalesDealerMappingConfirmed),
-            nameof(AdminController.CreateSalesPersonAccount),
+            nameof(AdminPodStationController.Create),
+            nameof(AdminPodStationController.Edit),
+            nameof(AdminPodStationController.DeleteConfirmed),
+        });
+
+        AssertPostAndAntiForgery(typeof(AdminPodController), new[]
+        {
+            nameof(AdminPodController.Create),
+            nameof(AdminPodController.Edit),
+            nameof(AdminPodController.DeleteConfirmed),
+            nameof(AdminPodController.SavePodAssignments),
+            nameof(AdminPodController.ClearPodAssignments),
+        });
+
+        AssertPostAndAntiForgery(typeof(AdminSalesPersonController), new[]
+        {
+            nameof(AdminSalesPersonController.Create),
+            nameof(AdminSalesPersonController.Edit),
+            nameof(AdminSalesPersonController.DeleteConfirmed),
+        });
+
+        AssertPostAndAntiForgery(typeof(AdminDealerController), new[]
+        {
+            nameof(AdminDealerController.Create),
+            nameof(AdminDealerController.Edit),
+            nameof(AdminDealerController.DeleteConfirmed),
+        });
+
+        AssertPostAndAntiForgery(typeof(AdminDealerMappingController), new[]
+        {
+            nameof(AdminDealerMappingController.Create),
+            nameof(AdminDealerMappingController.Edit),
+            nameof(AdminDealerMappingController.DeleteConfirmed),
+        });
+
+        AssertPostAndAntiForgery(typeof(AdminController), new[]
+        {
+            nameof(AdminController.CreateAccount),
             nameof(AdminController.ConfirmBulkUpload),
             nameof(AdminController.ResendInvitation),
             nameof(AdminController.DisableAccount),
             nameof(AdminController.EnableAccount),
             nameof(AdminController.DeleteAccount)
-        };
+        });
+    }
 
-        foreach (var name in mutations)
+    private static void AssertPostAndAntiForgery(Type controller, string[] names)
+    {
+        foreach (var name in names)
         {
-            var postActions = typeof(AdminController)
+            var postActions = controller
                 .GetMethods(BindingFlags.Instance | BindingFlags.Public)
                 .Where(m => m.Name == name && m.GetCustomAttribute<HttpPostAttribute>() != null)
                 .ToList();
 
-            Assert.True(postActions.Count > 0, $"{name} should have a POST action.");
+            Assert.True(postActions.Count > 0, $"{name} on {controller.Name} should have a POST action.");
             foreach (var action in postActions)
             {
                 Assert.NotNull(action.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>());
@@ -93,7 +124,7 @@ public class AuthorizationTests
             nameof(SalesPersonController.DisableTeamAccount),
             nameof(SalesPersonController.EnableTeamAccount),
             nameof(SalesPersonController.DeleteTeamAccount),
-            nameof(SalesPersonController.AssignTeamPOD),
+            nameof(SalesPersonController.AssignTeamPod),
             nameof(SalesPersonController.AddTeamMapping),
             nameof(SalesPersonController.RemoveTeamMapping)
         };

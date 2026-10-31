@@ -1,10 +1,12 @@
-﻿@{
+@{
     ViewData["Title"] = "Organization overview";
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
 }
+
+<partial name="_DashboardBanner" />
 
 <div class="page-head">
     <div>
@@ -13,14 +15,14 @@
     </div>
     <div class="page-actions">
         <a asp-action="BulkUpload" class="btn btn-ghost"><i class="bi bi-file-earmark-spreadsheet"></i>Bulk upload</a>
-        <a asp-action="CreateSalesPersonAccount" class="btn btn-brand"><i class="bi bi-person-plus"></i>Create account</a>
+        <a asp-action="CreateAccount" class="btn btn-brand"><i class="bi bi-person-plus"></i>Create account</a>
     </div>
 </div>
 
 <div class="metric-grid">
     <article class="metric-card">
         <div class="metric-card-top">
-            <span class="metric-label">POD stations</span>
+            <span class="metric-label">Pod stations</span>
             <span class="metric-icon"><i class="bi bi-building"></i></span>
         </div>
         <div class="metric-value">@ViewBag.PodStationCount</div>
@@ -31,7 +33,7 @@
     </article>
     <article class="metric-card">
         <div class="metric-card-top">
-            <span class="metric-label">PODs</span>
+            <span class="metric-label">Pods</span>
             <span class="metric-icon"><i class="bi bi-geo-alt"></i></span>
         </div>
         <div class="metric-value">@ViewBag.PodCount</div>
@@ -74,28 +76,28 @@
         </div>
         <div class="dashboard-card-body">
             <div class="quick-grid">
-                <a asp-action="SalesPersons" class="quick-link">
+                <a asp-action="Index" asp-controller="AdminSalesPerson" class="quick-link">
                     <i class="bi bi-people"></i>
                     <div>
                         <div class="fw-semibold">Employee directory</div>
                         <div class="text-hint">Hierarchy and reporting lines</div>
                     </div>
                 </a>
-                <a asp-action="PODStations" class="quick-link">
+                <a asp-action="Index" asp-controller="AdminPodStation" class="quick-link">
                     <i class="bi bi-building"></i>
                     <div>
-                        <div class="fw-semibold">POD stations</div>
+                        <div class="fw-semibold">Pod stations</div>
                         <div class="text-hint">Locations and OSS identifiers</div>
                     </div>
                 </a>
-                <a asp-action="PODs" class="quick-link">
+                <a asp-action="Index" asp-controller="AdminPod" class="quick-link">
                     <i class="bi bi-geo-alt"></i>
                     <div>
-                        <div class="fw-semibold">PODs</div>
+                        <div class="fw-semibold">Pods</div>
                         <div class="text-hint">Assign stations and salespeople</div>
                     </div>
                 </a>
-                <a asp-action="SalesDealerMappings" class="quick-link">
+                <a asp-action="Index" asp-controller="AdminDealerMapping" class="quick-link">
                     <i class="bi bi-diagram-2"></i>
                     <div>
                         <div class="fw-semibold">Dealer mappings</div>

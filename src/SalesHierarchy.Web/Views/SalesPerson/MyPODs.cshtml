@@ -1,10 +1,10 @@
-﻿@model IEnumerable<SalesHierarchy.Core.Models.POD>
+@model IEnumerable<SalesHierarchy.Core.Models.Pod>
 @{
-    ViewData["Title"] = "My PODs";
+    ViewData["Title"] = "My Pods";
 }
 <div class="page-head">
     <div>
-        <h1 class="page-title">My PODs</h1>
+        <h1 class="page-title">My Pods</h1>
         <p class="page-subtitle">Points of distribution assigned to you.</p>
     </div>
 </div>
@@ -15,22 +15,22 @@
         {
             <div class="empty-state">
                 <i class="bi bi-geo-alt"></i>
-                <div class="fw-semibold">No PODs assigned</div>
-                <div class="text-hint small">Your administrator has not assigned any PODs to you yet.</div>
+                <div class="fw-semibold">No Pods assigned</div>
+                <div class="text-hint small">Your administrator has not assigned any Pods to you yet.</div>
             </div>
         }
         else
         {
             <div class="table-responsive">
                 <table class="table table-clean mb-0">
-                    <thead><tr><th>POD</th><th>OSS POD Id</th><th>Station Id</th></tr></thead>
+                    <thead><tr><th>Pod</th><th>OSS Pod Id</th><th>Station</th></tr></thead>
                     <tbody>
                     @foreach (var pod in Model)
                     {
                         <tr>
                             <td class="fw-medium">@pod.Name</td>
-                            <td class="mono text-hint">@(string.IsNullOrWhiteSpace(pod.OSSPODID) ? "—" : pod.OSSPODID)</td>
-                            <td class="mono text-hint">@pod.PODStationId</td>
+                            <td class="mono text-hint">@pod.OSSPODID</td>
+                            <td class="mono text-hint">@(pod.PODStationId?.ToString() ?? "—")</td>
                         </tr>
                     }
                     </tbody>

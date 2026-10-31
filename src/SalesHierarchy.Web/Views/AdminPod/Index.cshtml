@@ -1,0 +1,113 @@
+@model IEnumerable<SalesHierarchy.Core.Models.Pod>
+@{
+    ViewData["Title"] = "Pods";
+    var query = ViewBag.Query as string;
+    var stations = ViewBag.Stations as Dictionary<int, SalesHierarchy.Core.Models.PodStation>
+        ?? new Dictionary<int, SalesHierarchy.Core.Models.PodStation>();
+    var owners = ViewBag.Owners as Dictionary<int, SalesHierarchy.Core.Models.SalesPerson>
+        ?? new Dictionary<int, SalesHierarchy.Core.Models.SalesPerson>();
+    var podList = Model.ToList();
+    var totalCount = ViewBag.TotalCount is int total ? total : podList.Count;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/hierarchy.css" asp-append-version="true" />
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Pods</h1>
+        <p class="page-subtitle">Master data for points of distribution. Station assignment is managed separately.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="PodAssignments" class="btn btn-ghost"><i class="bi bi-diagram-2 me-1"></i>Manage assignments</a>
+        <a asp-action="Create" class="btn btn-brand"><i class="bi bi-plus-lg"></i>New Pod</a>
+    </div>
+</div>
+
+<div class="toolbar-card">
+    <form method="get" class="toolbar-search">
+        <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search Pod, OSS Id, station, or owner..." />
+        <button type="submit" class="btn btn-ghost btn-sm" aria-label="Search Pods"><i class="bi bi-search"></i></button>
+        @if (!string.IsNullOrWhiteSpace(query))
+        {
+            <a asp-action="Index" class="btn btn-ghost btn-sm">Clear</a>
+        }
+    </form>
+    <div class="toolbar-meta">
+        <span>@totalCount Pod(s)</span>
+    </div>
+</div>
+
+<div class="card-clean">
+    <div class="card-body p-0">
+        @if (podList.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="bi bi-geo-alt"></i>
+                <div class="fw-semibold">No Pods found</div>
+                <div class="text-hint small">Create a Pod, then assign it to a station from Pod Assignment Management.</div>
+                <a asp-action="Create" class="btn btn-brand btn-sm mt-2">Create Pod</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean">
+                    <thead>
+                        <tr>
+                            <th>Pod</th>
+                            <th>OSS Pod Id</th>
+                            <th>Station</th>
+                            <th>Owner</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var pod in podList)
+                    {
+                        stations.TryGetValue(pod.PODStationId ?? 0, out var station);
+                        owners.TryGetValue(pod.Id, out var owner);
+                        <tr>
+                            <td>
+                                <div class="employee-cell">
+                                    <span class="station-icon"><i class="bi bi-geo-alt"></i></span>
+                                    <span class="employee-name">@pod.Name</span>
+                                </div>
+                            </td>
+                            <td><span class="id-code text-muted">@pod.OSSPODID</span></td>
+                            <td>
+                                @if (station != null)
+                                {
+                                    <a asp-action="Details" asp-controller="AdminPodStation" asp-route-id="@station.Id" class="link-subtle">@station.Name</a>
+                                }
+                                else
+                                {
+                                    <span class="badge-soft badge-soft-neutral">Unassigned</span>
+                                }
+                            </td>
+                            <td>
+                                @if (owner != null)
+                                {
+                                    <a asp-action="Details" asp-controller="AdminSalesPerson" asp-route-id="@owner.Id" class="link-subtle">@owner.Name</a>
+                                }
+                                else
+                                {
+                                    <span class="text-hint">—</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@pod.Id" class="btn btn-sm btn-ghost" title="Details"><i class="bi bi-eye"></i></a>
+                                <a asp-action="Edit" asp-route-id="@pod.Id" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="Delete" asp-route-id="@pod.Id" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@await Html.PartialAsync("_Pager", (SalesHierarchy.Web.ViewModels.PaginationViewModel)ViewBag.Pager)

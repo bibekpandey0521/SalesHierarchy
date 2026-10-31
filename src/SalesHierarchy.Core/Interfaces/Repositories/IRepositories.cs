@@ -1,15 +1,15 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using SalesHierarchy.Core.Models;
 
 namespace SalesHierarchy.Core.Interfaces.Repositories
 {
-    public interface IPODStationRepository
+    public interface IPodStationRepository
     {
-        IEnumerable<PODStation> GetAll();
-        PODStation? GetById(int id);
-        bool ExistsByName(string name, int? excludeId = null);
-        int Add(PODStation station);
-        bool Update(PODStation station);
+        IEnumerable<PodStation> GetAll();
+        PodStation? GetById(int id);
+        bool ExistsByOssId(int ossId, int? excludeId = null);
+        int Add(PodStation station);
+        bool Update(PodStation station);
         bool Delete(int id);
     }
 
@@ -19,25 +19,33 @@ namespace SalesHierarchy.Core.Interfaces.Repositories
         SalesPerson? GetById(int id);
         IEnumerable<SalesPerson> GetDirectReports(int managerId);
         bool HasSubordinates(int salesPersonId);
-        IReadOnlyList<int> GetPODIds(int salesPersonId);
+        IReadOnlyList<int> GetPodIds(int salesPersonId);
+        IReadOnlyList<SalesPersonPod> GetAllPodAssignments();
+        bool AssignPod(int salesPersonId, int podId);
+        bool RemovePod(int salesPersonId, int podId);
+        bool ReplacePodOwners(int podId, IReadOnlyCollection<int> salesPersonIds);
         int Add(SalesPerson person);
-        int AddWithPODs(SalesPerson person, IReadOnlyCollection<int> podIds);
+        int AddWithPods(SalesPerson person, IReadOnlyCollection<int> podIds);
         bool Update(SalesPerson person);
-        bool UpdateWithPODs(SalesPerson person, IReadOnlyCollection<int> podIds);
+        bool UpdateWithPods(SalesPerson person, IReadOnlyCollection<int> podIds);
         bool Delete(int id);
     }
 
-    public interface IPODRepository
+    public interface IPodRepository
     {
-        IEnumerable<POD> GetAll();
-        POD? GetById(int id);
-        IEnumerable<POD> GetBySalesPersonId(int salespersonId);
+        IEnumerable<Pod> GetAll();
+        Pod? GetById(int id);
+        IEnumerable<Pod> GetBySalesPersonId(int salespersonId);
+        IEnumerable<Pod> GetByStationId(int stationId);
         IReadOnlyCollection<int> GetExistingIds(IEnumerable<int> podIds);
+        bool ExistsByOssId(int ossId, int? excludeId = null);
         bool HasPodsForStation(int podStationId);
         bool HasPodsForSalesPerson(int salespersonId);
-        int Add(POD pod);
-        bool Update(POD pod);
+        int Add(Pod pod);
+        bool Update(Pod pod);
         bool Delete(int id);
+        void AssignPodsToStation(int stationId, IReadOnlyCollection<int> podIds);
+        void ClearStationAssignments(int stationId);
     }
 
     public interface IDealerRepository
@@ -51,15 +59,15 @@ namespace SalesHierarchy.Core.Interfaces.Repositories
         bool Delete(int id);
     }
 
-    public interface ISalesDealerMappingRepository
+    public interface IDealerMappingRepository
     {
-        IEnumerable<SalesDealerMapping> GetAll();
-        IEnumerable<SalesDealerMapping> GetBySalesPersonId(int salespersonId);
-        SalesDealerMapping? GetById(int id);
+        IEnumerable<DealerMapping> GetAll();
+        IEnumerable<DealerMapping> GetBySalesPersonId(int salespersonId);
+        DealerMapping? GetById(int id);
         bool Exists(int salespersonId, int dealerId, int? excludeId = null);
         bool HasMappingsForSalesPerson(int salespersonId);
-        int Add(SalesDealerMapping mapping);
-        bool Update(SalesDealerMapping mapping);
+        int Add(DealerMapping mapping);
+        bool Update(DealerMapping mapping);
         bool Delete(int id);
     }
 

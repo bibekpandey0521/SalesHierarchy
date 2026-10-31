@@ -5,7 +5,7 @@
     var roots = ViewBag.Roots as List<HierarchyNode> ?? new List<HierarchyNode>();
     var people = ViewBag.People as List<SalesPerson> ?? new List<SalesPerson>();
     var query = ViewBag.Query as string;
-    var peopleById = people.GroupBy(p => p.ID).ToDictionary(g => g.Key, g => g.First());
+    var peopleById = people.GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
     var directReportCounts = people
         .Where(p => p.ManagerId.HasValue)
         .GroupBy(p => p.ManagerId!.Value)
@@ -19,11 +19,11 @@
 <div class="page-head">
     <div>
         <h1 class="page-title">Sales hierarchy</h1>
-        <p class="page-subtitle">Reporting lines from leadership down to station-level PODs. Expand any node to see direct reports.</p>
+        <p class="page-subtitle">Reporting lines from leadership down to station-level Pods. Expand any node to see direct reports.</p>
     </div>
     <div class="page-actions">
-        <a asp-action="SalesPersons" class="btn btn-ghost"><i class="bi bi-people"></i>Directory</a>
-        <a asp-action="CreateSalesPerson" class="btn btn-brand"><i class="bi bi-person-plus"></i>Add employee</a>
+        <a asp-action="Index" asp-controller="AdminSalesPerson" class="btn btn-ghost"><i class="bi bi-people"></i>Directory</a>
+        <a asp-action="Create" asp-controller="AdminSalesPerson" class="btn btn-brand"><i class="bi bi-person-plus"></i>Add employee</a>
     </div>
 </div>
 
@@ -39,12 +39,12 @@
         <div class="summary-tile-hint">Top-level reporting lines</div>
     </div>
     <div class="summary-tile">
-        <div class="summary-tile-label">POD stations</div>
+        <div class="summary-tile-label">Pod stations</div>
         <div class="summary-tile-value">@ViewBag.PodStationCount</div>
         <div class="summary-tile-hint">Locations in the network</div>
     </div>
     <div class="summary-tile">
-        <div class="summary-tile-label">PODs</div>
+        <div class="summary-tile-label">Pods</div>
         <div class="summary-tile-value">@ViewBag.PodCount</div>
         <div class="summary-tile-hint">Points of distribution</div>
     </div>
@@ -76,7 +76,7 @@
             <i class="bi bi-diagram-3"></i>
             <div class="fw-semibold">No hierarchy nodes found</div>
             <div class="text-hint small">Try a different search term or add a salesperson record.</div>
-            <a asp-action="CreateSalesPerson" class="btn btn-brand btn-sm mt-2">Add employee</a>
+            <a asp-action="Create" asp-controller="AdminSalesPerson" class="btn btn-brand btn-sm mt-2">Add employee</a>
         </div>
     </div>
 }
@@ -113,7 +113,7 @@ else
                                     <span class="avatar-initials">@(string.IsNullOrWhiteSpace(person.Name) ? "?" : person.Name.Trim()[..1].ToUpperInvariant())</span>
                                     <span>
                                         <span class="employee-name d-block">@person.Name</span>
-                                        <span class="employee-sub d-block">ID-@person.ID.ToString("D4")</span>
+                                        <span class="employee-sub d-block">Id-@person.Id.ToString("D4")</span>
                                     </span>
                                 </div>
                             </td>
@@ -122,10 +122,10 @@ else
                                 @(person.ManagerId.HasValue && peopleById.TryGetValue(person.ManagerId.Value, out var manager) ? manager.Name : "Top level")
                             </td>
                             <td>
-                                <span class="badge-count">@(directReportCounts.TryGetValue(person.ID, out var reports) ? reports : 0)</span>
+                                <span class="badge-count">@(directReportCounts.TryGetValue(person.Id, out var reports) ? reports : 0)</span>
                             </td>
                             <td class="text-end">
-                                <a asp-action="DetailsSalesPerson" asp-route-id="@person.ID" class="row-action" title="View employee"><i class="bi bi-arrow-right"></i></a>
+                                <a asp-action="Details" asp-controller="AdminSalesPerson" asp-route-id="@person.Id" class="row-action" title="View employee"><i class="bi bi-arrow-right"></i></a>
                             </td>
                         </tr>
                     }

@@ -1,4 +1,4 @@
-﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
+@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
 @using SalesHierarchy.Core.Models
 @using SalesHierarchy.Web.Data
 @{
@@ -59,7 +59,7 @@ else
                             <th>Designation</th>
                             <th>Reports to</th>
                             <th>Login</th>
-                            <th class="text-center">PODs</th>
+                            <th class="text-center">Pods</th>
                             <th class="text-center">Dealers</th>
                             <th class="text-end">Actions</th>
                         </tr>
@@ -73,7 +73,7 @@ else
                                     <span class="avatar-initials">@(string.IsNullOrWhiteSpace(member.Name) ? "?" : member.Name.Trim()[..1].ToUpperInvariant())</span>
                                     <span>
                                         <span class="employee-name d-block">@member.Name</span>
-                                        @if (directReportCounts.TryGetValue(member.ID, out var directReports) && directReports > 0)
+                                        @if (directReportCounts.TryGetValue(member.Id, out var directReports) && directReports > 0)
                                         {
                                             <span class="employee-sub d-block">@directReports direct report(s)</span>
                                         }
@@ -85,23 +85,23 @@ else
                                 @(member.ManagerId.HasValue && people.TryGetValue(member.ManagerId.Value, out var manager) ? manager.Name : "—")
                             </td>
                             <td>
-                                @if (accounts.TryGetValue(member.ID, out var account))
+                                @if (accounts.TryGetValue(member.Id, out var account))
                                 {
                                     <div class="small">@account.Email</div>
                                     <div class="text-hint small">Linked account</div>
                                 }
                                 else
                                 {
-                                    <a asp-action="CreateTeamAccount" asp-route-salespersonId="@member.ID" class="link-subtle small">
+                                    <a asp-action="CreateTeamAccount" asp-route-salespersonId="@member.Id" class="link-subtle small">
                                         <i class="bi bi-envelope-plus me-1"></i>Create login
                                     </a>
                                 }
                             </td>
-                            <td class="text-center text-hint">@(podCounts.TryGetValue(member.ID, out var pods) ? pods : 0)</td>
-                            <td class="text-center text-hint">@(mappingCounts.TryGetValue(member.ID, out var mappings) ? mappings : 0)</td>
+                            <td class="text-center text-hint">@(podCounts.TryGetValue(member.Id, out var pods) ? pods : 0)</td>
+                            <td class="text-center text-hint">@(mappingCounts.TryGetValue(member.Id, out var mappings) ? mappings : 0)</td>
                             <td class="text-end text-nowrap">
-                                <a asp-action="EditTeamMember" asp-route-id="@member.ID" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
-                                <a asp-action="DeleteTeamMember" asp-route-id="@member.ID" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                                <a asp-action="EditTeamMember" asp-route-id="@member.Id" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="DeleteTeamMember" asp-route-id="@member.Id" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
                             </td>
                         </tr>
                     }

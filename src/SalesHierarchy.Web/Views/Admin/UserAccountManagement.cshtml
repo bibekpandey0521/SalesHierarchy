@@ -1,4 +1,4 @@
-﻿@model List<SalesHierarchy.Web.ViewModels.UserAccountRow>
+@model List<SalesHierarchy.Web.ViewModels.UserAccountRow>
 @{
     ViewData["Title"] = "User Accounts";
     var pending = Model.Count(u => u.Status == "Invitation pending");
@@ -8,7 +8,7 @@
         <h1 class="page-title">User Accounts</h1>
         <p class="page-subtitle">Login access, invitation status, and account state.</p>
     </div>
-    <a asp-action="CreateSalesPersonAccount" class="btn btn-brand"><i class="bi bi-person-plus me-1"></i>Create account</a>
+    <a asp-action="CreateAccount" class="btn btn-brand"><i class="bi bi-person-plus me-1"></i>Create account</a>
 </div>
 
 @if (pending > 0)
@@ -56,7 +56,7 @@
                             <td>
                                 @if (row.User.SalesPersonId.HasValue)
                                 {
-                                    <a asp-action="DetailsSalesPerson" asp-route-id="@row.User.SalesPersonId.Value" class="link-subtle">
+                                    <a asp-action="Details" asp-controller="AdminSalesPerson" asp-route-id="@row.User.SalesPersonId.Value" class="link-subtle">
                                         @(row.SalesPersonName ?? $"SalesPerson #{row.User.SalesPersonId}")
                                     </a>
                                 }

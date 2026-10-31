@@ -1,4 +1,4 @@
-﻿@model SalesHierarchy.Core.Models.SalesPerson?
+@model SalesHierarchy.Core.Models.SalesPerson?
 @{
     ViewData["Title"] = "My workspace";
     var manager = ViewBag.Manager as SalesHierarchy.Core.Models.SalesPerson;
@@ -34,7 +34,7 @@ else
     <div class="metric-grid is-three">
         <article class="metric-card">
             <div class="metric-card-top">
-                <span class="metric-label">My PODs</span>
+                <span class="metric-label">My Pods</span>
                 <span class="metric-icon"><i class="bi bi-geo-alt"></i></span>
             </div>
             <div class="metric-value">@ViewBag.PodCount</div>
@@ -98,11 +98,11 @@ else
                             <div class="text-hint">Invite, resend, disable, or remove</div>
                         </div>
                     </a>
-                    <a asp-action="TeamPODs" class="quick-link">
+                    <a asp-action="TeamPods" class="quick-link">
                         <i class="bi bi-geo-alt"></i>
                         <div>
-                            <div class="fw-semibold">Team PODs</div>
-                            <div class="text-hint">Reassign PODs within your team</div>
+                            <div class="fw-semibold">Team Pods</div>
+                            <div class="text-hint">Reassign Pods within your team</div>
                         </div>
                     </a>
                     <a asp-action="TeamDealerAssignments" class="quick-link">

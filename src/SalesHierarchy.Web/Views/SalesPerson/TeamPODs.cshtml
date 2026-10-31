@@ -1,17 +1,18 @@
-@model IEnumerable<SalesHierarchy.Core.Models.POD>
+@model IEnumerable<SalesHierarchy.Core.Models.Pod>
 @using SalesHierarchy.Core.Models
 @{
-    ViewData["Title"] = "Team PODs";
+    ViewData["Title"] = "Team Pods";
     var team = ViewBag.Team as List<SalesPerson> ?? new List<SalesPerson>();
     var people = ViewBag.People as Dictionary<int, SalesPerson> ?? new Dictionary<int, SalesPerson>();
-    var stations = ViewBag.Stations as Dictionary<int, PODStation> ?? new Dictionary<int, PODStation>();
+    var stations = ViewBag.Stations as Dictionary<int, PodStation> ?? new Dictionary<int, PodStation>();
+    var podOwners = ViewBag.PodOwners as Dictionary<int, List<int>> ?? new Dictionary<int, List<int>>();
     var current = ViewBag.Current as SalesPerson;
     var isManager = ViewBag.IsManager is true;
 }
 <div class="page-head">
     <div>
-        <h1 class="page-title">Team PODs</h1>
-        <p class="page-subtitle">Reassign PODs that are already owned within your team. New PODs are assigned by a System Administrator.</p>
+        <h1 class="page-title">Team Pods</h1>
+        <p class="page-subtitle">Reassign Pods that are already owned within your team. New Pods are assigned by a System Administrator.</p>
     </div>
     <a asp-action="MyTeam" class="btn btn-ghost">Back to team</a>
 </div>
@@ -21,8 +22,8 @@
     <div class="card-clean">
         <div class="empty-state">
             <i class="bi bi-geo-alt"></i>
-            <div class="fw-semibold">No team PODs</div>
-            <div class="text-hint small">A System Administrator assigns reporting lines and PODs. Once your team has PODs, you can reassign them here.</div>
+            <div class="fw-semibold">No team Pods</div>
+            <div class="text-hint small">A System Administrator assigns reporting lines and Pods. Once your team has Pods, you can reassign them here.</div>
         </div>
     </div>
 }
@@ -31,8 +32,8 @@ else if (!Model.Any())
     <div class="card-clean">
         <div class="empty-state">
             <i class="bi bi-geo-alt"></i>
-            <div class="fw-semibold">No PODs assigned to your team</div>
-            <div class="text-hint small">Ask a System Administrator to assign PODs to you or your team members.</div>
+            <div class="fw-semibold">No Pods assigned to your team</div>
+            <div class="text-hint small">Ask a System Administrator to assign Pods to you or your team members.</div>
         </div>
     </div>
 }
@@ -40,59 +41,67 @@ else
 {
     <div class="alert alert-info border-0">
         <i class="bi bi-info-circle me-1"></i>
-        You can move a POD between yourself and your team, or unassign it. PODs owned by another team are not visible or editable here.
+        You can move a Pod between yourself and your team, or unassign it. Pods owned by another team are not visible or editable here.
     </div>
 
     <div class="card-clean">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Team POD assignments</span>
+            <span>Team Pod assignments</span>
             <span class="badge-soft-neutral">@Model.Count()</span>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-clean mb-0">
                     <thead>
-                        <tr><th>POD</th><th>Station</th><th>Currently assigned to</th><th style="min-width: 320px;">Reassign to</th></tr>
+                        <tr><th>Pod</th><th>Station</th><th>Currently assigned to</th><th style="min-width: 320px;">Reassign to</th></tr>
                     </thead>
                     <tbody>
                     @foreach (var pod in Model)
                     {
+                        var owners = podOwners.TryGetValue(pod.Id, out var ownerIds) ? ownerIds : new List<int>();
+                        var singleOwner = owners.Count == 1 ? owners[0] : (int?)null;
                         <tr>
                             <td>
                                 <div class="fw-medium">@pod.Name</div>
-                                <div class="text-hint mono small">@(string.IsNullOrWhiteSpace(pod.OSSPODID) ? "—" : pod.OSSPODID)</div>
+                                <div class="text-hint mono small">@pod.OSSPODID</div>
                             </td>
                             <td class="text-hint">
-                                @(stations.TryGetValue(pod.PODStationId, out var station) ? station.Name : $"Station #{pod.PODStationId}")
+                                @(pod.PODStationId.HasValue && stations.TryGetValue(pod.PODStationId.Value, out var station) ? station.Name : "Unassigned")
                             </td>
                             <td>
-                                @if (pod.salespersonId.HasValue && people.TryGetValue(pod.salespersonId.Value, out var owner))
-                                {
-                                    <span class="fw-medium">@owner.Name</span>
-                                    @if (current != null && owner.ID == current.ID)
-                                    {
-                                        <span class="badge-soft-neutral ms-1">me</span>
-                                    }
-                                }
-                                else
+                                @if (owners.Count == 0)
                                 {
                                     <span class="badge-soft-warning">Unassigned</span>
                                 }
+                                else
+                                {
+                                    foreach (var ownerId in owners)
+                                    {
+                                        var ownerName = people.TryGetValue(ownerId, out var owner) ? owner.Name : $"#{ownerId}";
+                                        <span class="badge-soft-neutral me-1">
+                                            @ownerName@(current != null && ownerId == current.Id ? " (me)" : "")
+                                        </span>
+                                    }
+                                }
                             </td>
                             <td>
-                                <form asp-action="AssignTeamPOD" method="post" class="d-flex gap-2">
-                                    <input type="hidden" name="podId" value="@pod.ID" />
+                                <form asp-action="AssignTeamPod" method="post" class="d-flex gap-2">
+                                    <input type="hidden" name="podId" value="@pod.Id" />
                                     <select name="salespersonId" class="form-select form-select-sm">
                                         <option value="">Unassigned</option>
                                         @foreach (var member in team)
                                         {
-                                            <option value="@member.ID" selected="@(pod.salespersonId == member.ID ? "selected" : null)">
-                                                @member.Name@(current != null && member.ID == current.ID ? " (me)" : "")
+                                            <option value="@member.Id" selected="@(singleOwner == member.Id ? "selected" : null)">
+                                                @member.Name@(current != null && member.Id == current.Id ? " (me)" : "")
                                             </option>
                                         }
                                     </select>
                                     <button type="submit" class="btn btn-sm btn-brand text-nowrap">Save</button>
                                 </form>
+                                @if (owners.Count > 1)
+                                {
+                                    <div class="form-text text-hint small">Saving replaces all @owners.Count current owners.</div>
+                                }
                             </td>
                         </tr>
                     }

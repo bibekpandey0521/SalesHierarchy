@@ -1,0 +1,50 @@
+@model SalesHierarchy.Core.Models.DealerMapping
+@{
+    ViewData["Title"] = "Edit mapping";
+    var salesPersons = ViewBag.SalesPersons as List<SalesHierarchy.Core.Models.SalesPerson> ?? new List<SalesHierarchy.Core.Models.SalesPerson>();
+    var dealers = ViewBag.Dealers as List<SalesHierarchy.Core.Models.Dealer> ?? new List<SalesHierarchy.Core.Models.Dealer>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Edit mapping</h1>
+        <p class="page-subtitle">Reassign the salesperson or dealer for this mapping.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-ghost">Back to list</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <form asp-action="Edit" method="post" novalidate>
+            <input type="hidden" asp-for="UniqueID" />
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="SalesPersonId" class="form-label"></label>
+                    <select asp-for="SalesPersonId" class="form-select">
+                        <option value="">Select a salesperson</option>
+                        @foreach (var person in salesPersons)
+                        {
+                            <option value="@person.Id">@person.Name — @person.Designation</option>
+                        }
+                    </select>
+                    <span asp-validation-for="SalesPersonId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="DealerId" class="form-label"></label>
+                    <select asp-for="DealerId" class="form-select">
+                        <option value="">Select a dealer</option>
+                        @foreach (var dealer in dealers)
+                        {
+                            <option value="@dealer.UniqueID">@dealer.Name — @dealer.Code</option>
+                        }
+                    </select>
+                    <span asp-validation-for="DealerId" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-brand">Save changes</button>
+                <a asp-action="Index" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

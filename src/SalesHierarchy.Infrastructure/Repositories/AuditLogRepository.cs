@@ -47,7 +47,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
             using var cmd = new SqlCommand(
-                @"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
+                @"SELECT TOP (@take) Id, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
                   FROM dbo.AuditLog
                   WHERE (@entity IS NULL OR EntityName = @entity)
                     AND (@action IS NULL OR [Action] = @action)
@@ -55,7 +55,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
                          OR Summary LIKE '%' + @search + '%'
                          OR UserEmail LIKE '%' + @search + '%'
                          OR EntityId LIKE '%' + @search + '%')
-                  ORDER BY OccurredUtc DESC, ID DESC;", conn);
+                  ORDER BY OccurredUtc DESC, Id DESC;", conn);
 
             cmd.Parameters.AddWithValue("@take", take < 1 ? 1 : take);
             cmd.Parameters.AddWithValue("@entity", (object?)entityName ?? DBNull.Value);
@@ -77,10 +77,10 @@ namespace SalesHierarchy.Infrastructure.Repositories
             using var conn = (SqlConnection)_factory.CreateConnection();
             conn.Open();
             using var cmd = new SqlCommand(
-                @"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
+                @"SELECT TOP (@take) Id, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
                   FROM dbo.AuditLog
                   WHERE EntityName = @entity AND EntityId = @entityId
-                  ORDER BY OccurredUtc DESC, ID DESC;", conn);
+                  ORDER BY OccurredUtc DESC, Id DESC;", conn);
 
             cmd.Parameters.AddWithValue("@take", take < 1 ? 1 : take);
             cmd.Parameters.AddWithValue("@entity", entityName);
@@ -112,13 +112,13 @@ namespace SalesHierarchy.Infrastructure.Repositories
                 userEmails.Where(e => !string.IsNullOrWhiteSpace(e)).Distinct(StringComparer.OrdinalIgnoreCase));
 
             using var cmd = new SqlCommand(
-                @"SELECT TOP (@take) ID, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
+                @"SELECT TOP (@take) Id, OccurredUtc, UserEmail, [Action], EntityName, EntityId, Summary, Details, RelatedSalesPersonId
                   FROM dbo.AuditLog
                   WHERE RelatedSalesPersonId IN (SELECT value FROM OPENJSON(@ids) WITH (value int '$'))
                      OR ([EntityName] = 'SalesPerson'
                          AND TRY_CONVERT(INT, EntityId) IN (SELECT value FROM OPENJSON(@ids) WITH (value int '$')))
                      OR UserEmail IN (SELECT value FROM OPENJSON(@emails) WITH (value nvarchar(256) '$'))
-                  ORDER BY OccurredUtc DESC, ID DESC;", conn);
+                  ORDER BY OccurredUtc DESC, Id DESC;", conn);
 
             cmd.Parameters.AddWithValue("@take", take < 1 ? 1 : take);
             cmd.Parameters.AddWithValue("@ids", ids);
@@ -137,7 +137,7 @@ namespace SalesHierarchy.Infrastructure.Repositories
         {
             return new AuditLog
             {
-                ID = (long)reader["ID"],
+                Id = (long)reader["Id"],
                 OccurredUtc = (DateTime)reader["OccurredUtc"],
                 UserEmail = reader["UserEmail"] as string,
                 Action = reader["Action"].ToString() ?? string.Empty,

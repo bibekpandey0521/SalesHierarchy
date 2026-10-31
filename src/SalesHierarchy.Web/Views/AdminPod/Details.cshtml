@@ -1,0 +1,65 @@
+@model SalesHierarchy.Core.Models.Pod
+@using SalesHierarchy.Core.Models
+@{
+    ViewData["Title"] = "Pod details";
+    var station = ViewBag.Station as PodStation;
+    var salesPerson = ViewBag.SalesPerson as SalesPerson;
+    var owners = ViewBag.Owners as List<SalesPerson> ?? new List<SalesPerson>();
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@Model.Name</h1>
+        <p class="page-subtitle">Pod details, station assignment, and ownership.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-ghost">Back</a>
+        <a asp-action="PodAssignments" asp-route-stationId="@Model.PODStationId" class="btn btn-ghost"><i class="bi bi-diagram-2 me-1"></i>Manage assignments</a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-brand"><i class="bi bi-pencil me-1"></i>Edit</a>
+    </div>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <dl class="detail-list mb-0">
+            <dt>Pod name</dt>
+            <dd>@Model.Name</dd>
+            <dt>OSS Pod Id</dt>
+            <dd class="mono">@Model.OSSPODID</dd>
+            <dt>Pod station</dt>
+            <dd>
+                @if (station != null)
+                {
+                    <a asp-action="Details" asp-controller="AdminPodStation" asp-route-id="@station.Id" class="link-subtle">@station.Name</a>
+                    <span class="text-hint small ms-2">(OSS @station.OSSPODStationId)</span>
+                }
+                else
+                {
+                    <span class="badge-soft badge-soft-neutral">Unassigned</span>
+                }
+            </dd>
+            <dt>Owners (SalesPersonPod)</dt>
+            <dd>
+                @if (owners.Count > 0)
+                {
+                    foreach (var owner in owners)
+                    {
+                        <a asp-action="Details" asp-controller="AdminSalesPerson" asp-route-id="@owner.Id" class="link-subtle d-block">@owner.Name</a>
+                    }
+                }
+                else
+                {
+                    <span class="text-hint">No salesperson is linked to this Pod.</span>
+                }
+            </dd>
+            @if (salesPerson != null)
+            {
+                <dt>Legacy owner column</dt>
+                <dd>
+                    <a asp-action="Details" asp-controller="AdminSalesPerson" asp-route-id="@salesPerson.Id" class="link-subtle">@salesPerson.Name</a>
+                    <span class="text-hint small ms-2">Kept in sync from SalesPersonPod</span>
+                </dd>
+            }
+        </dl>
+    </div>
+</div>

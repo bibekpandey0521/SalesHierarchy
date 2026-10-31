@@ -1,4 +1,4 @@
-﻿@model IEnumerable<SalesHierarchy.Core.Models.SalesDealerMapping>
+@model IEnumerable<SalesHierarchy.Core.Models.DealerMapping>
 @using SalesHierarchy.Core.Models
 @{
     ViewData["Title"] = "Team Dealer Assignments";
@@ -35,7 +35,7 @@ else
                                 <select id="salespersonId" name="salespersonId" class="form-select" required>
                                     @foreach (var member in team)
                                     {
-                                        <option value="@member.ID" selected="@(currentId == member.ID ? "selected" : null)">@member.Name@(member.ID == currentId ? " (me)" : "")</option>
+                                        <option value="@member.Id" selected="@(currentId == member.Id ? "selected" : null)">@member.Name@(member.Id == currentId ? " (me)" : "")</option>
                                     }
                                 </select>
                             </div>
@@ -86,15 +86,15 @@ else
                                 {
                                     <tr>
                                         <td class="fw-medium">
-                                            @(people.TryGetValue(mapping.salespersonid, out var person) ? person.Name : "Unknown")
-                                            @if (currentId == mapping.salespersonid)
+                                            @(people.TryGetValue(mapping.SalesPersonId, out var person) ? person.Name : "Unknown")
+                                            @if (currentId == mapping.SalesPersonId)
                                             {
                                                 <span class="badge-soft-neutral ms-1">me</span>
                                             }
                                         </td>
                                         <td>
-                                            <div>@(dealers.TryGetValue(mapping.dealerid, out var dealer) ? dealer.Name : "Unknown")</div>
-                                            <div class="text-hint mono small">@(dealers.TryGetValue(mapping.dealerid, out var dealerCode) ? dealerCode.Code : "—")</div>
+                                            <div>@(dealers.TryGetValue(mapping.DealerId, out var dealer) ? dealer.Name : "Unknown")</div>
+                                            <div class="text-hint mono small">@(dealers.TryGetValue(mapping.DealerId, out var dealerCode) ? dealerCode.Code : "—")</div>
                                         </td>
                                         <td class="text-end">
                                             @if (isManager)

@@ -1,7 +1,7 @@
-﻿@model IEnumerable<SalesHierarchy.Core.DTOs.PublicSalesPersonDto>
+@model IEnumerable<SalesHierarchy.Core.DTOs.PublicSalesPersonDto>
 @{
     ViewData["Title"] = "Sales Hierarchy";
-    var people = Model.GroupBy(p => p.ID).ToDictionary(g => g.Key, g => g.First());
+    var people = Model.GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
     var query = ViewBag.Query as string;
 }
 <div class="page-head">

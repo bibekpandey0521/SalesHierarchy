@@ -5,12 +5,12 @@ namespace SalesHierarchy.Web.ViewModels
 {
     /// <summary>
     /// Form model for creating/editing a salesperson together with the many-to-many
-    /// POD assignments. Kept separate from the persistence model so submitted POD IDs
+    /// Pod assignments. Kept separate from the persistence model so submitted Pod IDs
     /// and manager options are explicit and cannot be over-posted into other fields.
     /// </summary>
     public class SalesPersonFormViewModel
     {
-        public int ID { get; set; }
+        public int Id { get; set; }
 
         [Required(ErrorMessage = "Name is required.")]
         [StringLength(200, ErrorMessage = "Name must be 200 characters or fewer.")]
@@ -25,13 +25,13 @@ namespace SalesHierarchy.Web.ViewModels
         [Display(Name = "Reports to")]
         public int? ManagerId { get; set; }
 
-        [Display(Name = "Assigned PODs")]
-        public List<int> PODIds { get; set; } = new();
+        [Display(Name = "Assigned Pods")]
+        public List<int> PodIds { get; set; } = new();
 
         public IReadOnlyList<SalesPerson> Managers { get; set; } = Array.Empty<SalesPerson>();
-        public IReadOnlyList<POD> AvailablePODs { get; set; } = Array.Empty<POD>();
-        public IReadOnlyDictionary<int, PODStation> Stations { get; set; } =
-            new Dictionary<int, PODStation>();
+        public IReadOnlyList<Pod> AvailablePods { get; set; } = Array.Empty<Pod>();
+        public IReadOnlyDictionary<int, PodStation> Stations { get; set; } =
+            new Dictionary<int, PodStation>();
         public IReadOnlyList<string> DesignationOptions { get; set; } = Array.Empty<string>();
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SalesHierarchy.Infrastructure.Data;
 using SalesHierarchy.Infrastructure.Repositories;
@@ -34,11 +34,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 builder.Services.AddSingleton(new SqlConnectionFactory(connectionString));
-builder.Services.AddScoped<IPODStationRepository, PODStationRepository>();
+builder.Services.AddScoped<IPodStationRepository, PodStationRepository>();
 builder.Services.AddScoped<ISalesPersonRepository, SalesPersonRepository>();
-builder.Services.AddScoped<IPODRepository, PODRepository>();
+builder.Services.AddScoped<IPodRepository, PodRepository>();
 builder.Services.AddScoped<IDealerRepository, DealerRepository>();
-builder.Services.AddScoped<ISalesDealerMappingRepository, SalesDealerMappingRepository>();
+builder.Services.AddScoped<IDealerMappingRepository, DealerMappingRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<BulkUploadService>();

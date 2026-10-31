@@ -139,7 +139,7 @@ else
                                 <td class="fw-medium">@member.Name</td>
                                 <td class="text-hint">@(string.IsNullOrWhiteSpace(member.Designation) ? "—" : member.Designation)</td>
                                 <td class="text-end">
-                                    <a asp-action="CreateTeamAccount" asp-route-salespersonId="@member.ID" class="btn btn-sm btn-brand">
+                                    <a asp-action="CreateTeamAccount" asp-route-salespersonId="@member.Id" class="btn btn-sm btn-brand">
                                         <i class="bi bi-envelope-plus me-1"></i>Create login
                                     </a>
                                 </td>

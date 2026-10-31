@@ -1,0 +1,37 @@
+@model SalesHierarchy.Core.Models.Pod
+@using SalesHierarchy.Core.Models
+@{
+    ViewData["Title"] = "Delete Pod";
+    var station = ViewBag.Station as PodStation;
+    var salesPerson = ViewBag.SalesPerson as SalesPerson;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Delete Pod</h1>
+        <p class="page-subtitle">This action cannot be undone.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-ghost">Back to list</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <div class="alert alert-warning border-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            You are about to delete <strong>@Model.Name</strong>.
+        </div>
+        <dl class="detail-list">
+            <dt>Station</dt>
+            <dd>@(station?.Name ?? "—")</dd>
+            <dt>Assigned salesperson</dt>
+            <dd>@(salesPerson?.Name ?? "Unassigned")</dd>
+        </dl>
+        <p class="text-muted small">Pods are not referenced by other tables, so this record can be deleted.</p>
+        <form asp-action="Delete" method="post">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-danger">Delete Pod</button>
+                <a asp-action="Index" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -22,9 +22,9 @@ namespace SalesHierarchy.Web.Controllers
     public class SalesPersonController : Controller
     {
         private readonly ISalesPersonRepository _salesPersonRepository;
-        private readonly IPODRepository _podRepository;
-        private readonly IPODStationRepository _podStationRepository;
-        private readonly ISalesDealerMappingRepository _mappingRepository;
+        private readonly IPodRepository _podRepository;
+        private readonly IPodStationRepository _podStationRepository;
+        private readonly IDealerMappingRepository _mappingRepository;
         private readonly IDealerRepository _dealerRepository;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSender _emailSender;
@@ -33,9 +33,9 @@ namespace SalesHierarchy.Web.Controllers
 
         public SalesPersonController(
             ISalesPersonRepository salesPersonRepository,
-            IPODRepository podRepository,
-            IPODStationRepository podStationRepository,
-            ISalesDealerMappingRepository mappingRepository,
+            IPodRepository podRepository,
+            IPodStationRepository podStationRepository,
+            IDealerMappingRepository mappingRepository,
             IDealerRepository dealerRepository,
             UserManager<ApplicationUser> userManager,
             IEmailSender emailSender,
@@ -62,12 +62,12 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             var all = _salesPersonRepository.GetAll().ToList();
-            var reports = HierarchyValidator.GetDescendants(person.ID, all);
+            var reports = HierarchyRules.GetTeamMembers(person.Id, all);
 
-            ViewBag.PodCount = _podRepository.GetBySalesPersonId(person.ID).Count();
-            ViewBag.DealerCount = _mappingRepository.GetBySalesPersonId(person.ID).Count();
+            ViewBag.PodCount = _podRepository.GetBySalesPersonId(person.Id).Count();
+            ViewBag.DealerCount = _mappingRepository.GetBySalesPersonId(person.Id).Count();
             ViewBag.TeamCount = reports.Count;
-            ViewBag.Manager = person.ManagerId.HasValue ? all.FirstOrDefault(p => p.ID == person.ManagerId.Value) : null;
+            ViewBag.Manager = person.ManagerId.HasValue ? all.FirstOrDefault(p => p.Id == person.ManagerId.Value) : null;
 
             return View(person);
         }
@@ -81,21 +81,21 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             var all = _salesPersonRepository.GetAll().ToList();
-            ViewBag.Manager = person.ManagerId.HasValue ? all.FirstOrDefault(p => p.ID == person.ManagerId.Value) : null;
-            ViewBag.ManagerChain = HierarchyValidator.GetManagerChain(person.ID, all);
-            ViewBag.DirectReports = _salesPersonRepository.GetDirectReports(person.ID).ToList();
+            ViewBag.Manager = person.ManagerId.HasValue ? all.FirstOrDefault(p => p.Id == person.ManagerId.Value) : null;
+            ViewBag.ManagerChain = HierarchyRules.GetManagers(person.Id, all);
+            ViewBag.DirectReports = _salesPersonRepository.GetDirectReports(person.Id).ToList();
             return View(person);
         }
 
-        public async Task<IActionResult> MyPODs()
+        public async Task<IActionResult> MyPods()
         {
             var person = await GetCurrentSalesPersonAsync();
             if (person == null)
             {
-                return View(new List<POD>());
+                return View(new List<Pod>());
             }
 
-            return View(_podRepository.GetBySalesPersonId(person.ID).ToList());
+            return View(_podRepository.GetBySalesPersonId(person.Id).ToList());
         }
 
         public async Task<IActionResult> MyDealers()
@@ -106,7 +106,7 @@ namespace SalesHierarchy.Web.Controllers
                 return View(new List<Dealer>());
             }
 
-            var dealerIds = _mappingRepository.GetBySalesPersonId(person.ID).Select(m => m.dealerid).ToHashSet();
+            var dealerIds = _mappingRepository.GetBySalesPersonId(person.Id).Select(m => m.DealerId).ToHashSet();
             return View(_dealerRepository.GetAll().Where(d => dealerIds.Contains(d.UniqueID)).ToList());
         }
 
@@ -122,21 +122,21 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             var all = _salesPersonRepository.GetAll().ToList();
-            var team = HierarchyValidator.GetDescendants(person.ID, all);
-            var teamIds = team.Select(p => p.ID).ToHashSet();
+            var team = HierarchyRules.GetTeamMembers(person.Id, all);
+            var teamIds = team.Select(p => p.Id).ToHashSet();
 
             var accounts = _userManager.Users
                 .Where(u => u.SalesPersonId.HasValue && teamIds.Contains(u.SalesPersonId.Value))
                 .ToList()
                 .GroupBy(u => u.SalesPersonId!.Value)
                 .ToDictionary(g => g.Key, g => g.First());
-            var podCounts = _podRepository.GetAll()
-                .Where(p => p.salespersonId.HasValue && teamIds.Contains(p.salespersonId.Value))
-                .GroupBy(p => p.salespersonId!.Value)
-                .ToDictionary(g => g.Key, g => g.Count());
+            var podCounts = _salesPersonRepository.GetAllPodAssignments()
+                .Where(a => teamIds.Contains(a.SalesPersonId))
+                .GroupBy(a => a.SalesPersonId)
+                .ToDictionary(g => g.Key, g => g.Select(a => a.PodId).Distinct().Count());
             var mappingCounts = _mappingRepository.GetAll()
-                .Where(m => teamIds.Contains(m.salespersonid))
-                .GroupBy(m => m.salespersonid)
+                .Where(m => teamIds.Contains(m.SalesPersonId))
+                .GroupBy(m => m.SalesPersonId)
                 .ToDictionary(g => g.Key, g => g.Count());
             var directReportCounts = all
                 .Where(p => p.ManagerId.HasValue)
@@ -144,7 +144,7 @@ namespace SalesHierarchy.Web.Controllers
                 .ToDictionary(g => g.Key, g => g.Count());
 
             ViewBag.Current = person;
-            ViewBag.People = all.GroupBy(p => p.ID).ToDictionary(g => g.Key, g => g.First());
+            ViewBag.People = all.GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
             ViewBag.Accounts = accounts;
             ViewBag.PodCounts = podCounts;
             ViewBag.MappingCounts = mappingCounts;
@@ -169,7 +169,7 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             ViewBag.ManagerName = person.Name;
-            return View(new SalesPerson { ManagerId = person.ID });
+            return View(new SalesPerson { ManagerId = person.Id });
         }
 
         [HttpPost]
@@ -188,12 +188,12 @@ namespace SalesHierarchy.Web.Controllers
                 return RedirectToAction(nameof(MyTeam));
             }
 
-            model.ID = 0;
+            model.Id = 0;
             model.Name = model.Name?.Trim() ?? string.Empty;
             model.Designation = string.IsNullOrWhiteSpace(model.Designation) ? null : model.Designation.Trim();
             // Reporting managers are always assigned by a SystemAdmin. A manager can only
             // add a person into their own team, never into another team or above themselves.
-            model.ManagerId = person.ID;
+            model.ManagerId = person.Id;
 
             if (!ModelState.IsValid)
             {
@@ -258,7 +258,7 @@ namespace SalesHierarchy.Web.Controllers
                 return Forbid();
             }
 
-            model.ID = id;
+            model.Id = id;
             model.Name = model.Name?.Trim() ?? string.Empty;
             model.Designation = string.IsNullOrWhiteSpace(model.Designation) ? null : model.Designation.Trim();
             // Keep the existing manager. Changing a reporting line is an admin operation.
@@ -280,10 +280,10 @@ namespace SalesHierarchy.Web.Controllers
             _audit.Record(
                 "Update",
                 "SalesPerson",
-                model.ID.ToString(),
+                model.Id.ToString(),
                 $"Team member '{model.Name}' updated by {person.Name}.",
                 new { Before = existing, After = model },
-                relatedSalesPersonId: model.ID);
+                relatedSalesPersonId: model.Id);
 
             TempData["SuccessMessage"] = $"Team member '{model.Name}' updated.";
             return RedirectToAction(nameof(MyTeam));
@@ -351,10 +351,10 @@ namespace SalesHierarchy.Web.Controllers
                 _audit.Record(
                     "Delete",
                     "SalesPerson",
-                    member.ID.ToString(),
+                    member.Id.ToString(),
                     $"Team member '{member.Name}' deleted by {person.Name}.",
                     member,
-                    relatedSalesPersonId: member.ID);
+                    relatedSalesPersonId: member.Id);
 
                 TempData["SuccessMessage"] = $"Team member '{member.Name}' deleted.";
             }
@@ -378,8 +378,8 @@ namespace SalesHierarchy.Web.Controllers
                 return View(new List<UserAccountRow>());
             }
 
-            var team = HierarchyValidator.GetDescendants(person.ID, _salesPersonRepository.GetAll()).ToList();
-            var teamIds = team.Select(p => p.ID).ToHashSet();
+            var team = HierarchyRules.GetTeamMembers(person.Id, _salesPersonRepository.GetAll()).ToList();
+            var teamIds = team.Select(p => p.Id).ToHashSet();
             var users = _userManager.Users
                 .Where(u => u.SalesPersonId.HasValue && teamIds.Contains(u.SalesPersonId.Value))
                 .OrderBy(u => u.Email)
@@ -393,14 +393,14 @@ namespace SalesHierarchy.Web.Controllers
                     User = user,
                     HasPassword = await _userManager.HasPasswordAsync(user),
                     IsDisabled = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow,
-                    SalesPersonName = team.FirstOrDefault(p => p.ID == user.SalesPersonId)?.Name
+                    SalesPersonName = team.FirstOrDefault(p => p.Id == user.SalesPersonId)?.Name
                 });
             }
 
             var linkedIds = users.Where(u => u.SalesPersonId.HasValue).Select(u => u.SalesPersonId!.Value).ToHashSet();
             ViewBag.IsManager = team.Count > 0;
             ViewBag.Current = person;
-            ViewBag.Unlinked = team.Where(p => !linkedIds.Contains(p.ID)).OrderBy(p => p.Name).ToList();
+            ViewBag.Unlinked = team.Where(p => !linkedIds.Contains(p.Id)).OrderBy(p => p.Name).ToList();
             return View(rows);
         }
 
@@ -430,7 +430,7 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             ViewBag.Person = member;
-            return View(new CreateTeamAccountViewModel { SalesPersonId = member.ID });
+            return View(new CreateTeamAccountViewModel { SalesPersonId = member.Id });
         }
 
         [HttpPost]
@@ -449,7 +449,7 @@ namespace SalesHierarchy.Web.Controllers
                 return NotFound();
             }
 
-            if (!CanManage(person, member.ID))
+            if (!CanManage(person, member.Id))
             {
                 return Forbid();
             }
@@ -457,7 +457,7 @@ namespace SalesHierarchy.Web.Controllers
             ViewBag.Person = member;
             model.Email = model.Email?.Trim() ?? string.Empty;
 
-            if (_userManager.Users.Any(u => u.SalesPersonId == member.ID))
+            if (_userManager.Users.Any(u => u.SalesPersonId == member.Id))
             {
                 ModelState.AddModelError(string.Empty, $"{member.Name} already has a login account.");
             }
@@ -480,7 +480,7 @@ namespace SalesHierarchy.Web.Controllers
                     UserName = model.Email,
                     Email = model.Email,
                     EmailConfirmed = true,
-                    SalesPersonId = member.ID
+                    SalesPersonId = member.Id
                 };
 
                 var createResult = await _userManager.CreateAsync(user);
@@ -517,8 +517,8 @@ namespace SalesHierarchy.Web.Controllers
                     "UserAccount",
                     user.Id,
                     $"Account {user.Email} created for team member '{member.Name}'.",
-                    new { user.Email, SalesPersonId = member.ID, Invitation = invitationStatus },
-                    relatedSalesPersonId: member.ID);
+                    new { user.Email, SalesPersonId = member.Id, Invitation = invitationStatus },
+                    relatedSalesPersonId: member.Id);
 
                 TempData["SuccessMessage"] = invitationStatus == "Sent"
                     ? $"Login account created and an invitation e-mail was sent to {model.Email}."
@@ -701,41 +701,53 @@ namespace SalesHierarchy.Web.Controllers
             return RedirectToAction(nameof(TeamAccounts));
         }
 
-        // --------------------------------------------------------------- team PODs
+        // --------------------------------------------------------------- team Pods
 
-        public async Task<IActionResult> TeamPODs()
+        public async Task<IActionResult> TeamPods()
         {
             var person = await GetCurrentSalesPersonAsync();
             if (person == null)
             {
                 ViewBag.IsManager = false;
-                return View(new List<POD>());
+                return View(new List<Pod>());
             }
 
             var all = _salesPersonRepository.GetAll().ToList();
-            var team = HierarchyValidator.GetDescendants(person.ID, all);
-            var teamIds = new HashSet<int>(team.Select(p => p.ID)) { person.ID };
+            var team = HierarchyRules.GetTeamMembers(person.Id, all);
+            var teamIds = new HashSet<int>(team.Select(p => p.Id)) { person.Id };
 
+            // SalesPersonPod is the source of truth for ownership. A Pod can have more
+            // than one owner, so collect every team assignment and group it by Pod.
+            var assignments = _salesPersonRepository.GetAllPodAssignments()
+                .Where(a => teamIds.Contains(a.SalesPersonId))
+                .ToList();
+            var ownedPodIds = assignments.Select(a => a.PodId).ToHashSet();
             var pods = _podRepository.GetAll()
-                .Where(p => p.salespersonId.HasValue && teamIds.Contains(p.salespersonId.Value))
+                .Where(p => ownedPodIds.Contains(p.Id))
                 .OrderBy(p => p.Name)
                 .ToList();
+            var podOwners = assignments
+                .GroupBy(a => a.PodId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(a => a.SalesPersonId).Distinct().OrderBy(id => id).ToList());
 
             ViewBag.Current = person;
             ViewBag.IsManager = team.Count > 0;
-            ViewBag.People = all.GroupBy(p => p.ID).ToDictionary(g => g.Key, g => g.First());
+            ViewBag.People = all.GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
             ViewBag.Team = all
-                .Where(p => teamIds.Contains(p.ID))
+                .Where(p => teamIds.Contains(p.Id))
                 .OrderBy(p => p.Name)
                 .ToList();
-            ViewBag.Stations = _podStationRepository.GetAll().GroupBy(s => s.ID).ToDictionary(g => g.Key, g => g.First());
+            ViewBag.Stations = _podStationRepository.GetAll().GroupBy(s => s.Id).ToDictionary(g => g.Key, g => g.First());
+            ViewBag.PodOwners = podOwners;
 
             return View(pods);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AssignTeamPOD(int podId, int? salespersonId)
+        public async Task<IActionResult> AssignTeamPod(int podId, int? salespersonId)
         {
             var person = await GetCurrentSalesPersonAsync();
             if (person == null)
@@ -745,8 +757,8 @@ namespace SalesHierarchy.Web.Controllers
 
             if (!IsManager(person))
             {
-                TempData["ErrorMessage"] = "Only managers can reassign PODs. Ask a System Administrator or your manager to update them.";
-                return RedirectToAction(nameof(TeamPODs));
+                TempData["ErrorMessage"] = "Only managers can reassign Pods. Ask a System Administrator or your manager to update them.";
+                return RedirectToAction(nameof(TeamPods));
             }
 
             var pod = _podRepository.GetById(podId);
@@ -756,49 +768,55 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             var teamIds = GetTeamIds(person);
-            if (pod.salespersonId == null || !teamIds.Contains(pod.salespersonId.Value))
+            var currentOwners = _salesPersonRepository.GetAllPodAssignments()
+                .Where(a => a.PodId == podId)
+                .Select(a => a.SalesPersonId)
+                .Distinct()
+                .ToList();
+            if (currentOwners.Count == 0 || !currentOwners.Any(teamIds.Contains))
             {
-                TempData["ErrorMessage"] = "You can only reassign PODs that are already assigned within your own team.";
-                return RedirectToAction(nameof(TeamPODs));
+                TempData["ErrorMessage"] = "You can only reassign Pods that are already assigned within your own team.";
+                return RedirectToAction(nameof(TeamPods));
             }
 
             if (salespersonId.HasValue && !teamIds.Contains(salespersonId.Value))
             {
                 TempData["ErrorMessage"] = "The selected salesperson is not part of your team.";
-                return RedirectToAction(nameof(TeamPODs));
+                return RedirectToAction(nameof(TeamPods));
             }
 
-            var previousPersonId = pod.salespersonId;
-            if (previousPersonId == salespersonId)
+            var newOwners = salespersonId.HasValue
+                ? new[] { salespersonId.Value }
+                : Array.Empty<int>();
+            if (currentOwners.Count == newOwners.Length && currentOwners.All(newOwners.Contains))
             {
-                TempData["Message"] = "The POD assignment is already up to date.";
-                return RedirectToAction(nameof(TeamPODs));
+                TempData["Message"] = "The Pod assignment is already up to date.";
+                return RedirectToAction(nameof(TeamPods));
             }
 
-            pod.salespersonId = salespersonId;
-            if (!_podRepository.Update(pod))
+            try
             {
-                TempData["ErrorMessage"] = $"POD '{pod.Name}' could not be updated. It may have been changed by another user.";
-                return RedirectToAction(nameof(TeamPODs));
+                _salesPersonRepository.ReplacePodOwners(podId, newOwners);
+            }
+            catch (Exception)
+            {
+                TempData["ErrorMessage"] = $"Pod '{pod.Name}' could not be updated. It may have been changed by another user.";
+                return RedirectToAction(nameof(TeamPods));
             }
 
-            var previousName = previousPersonId.HasValue
-                ? _salesPersonRepository.GetById(previousPersonId.Value)?.Name ?? previousPersonId.Value.ToString()
-                : "Unassigned";
-            var newName = salespersonId.HasValue
-                ? _salesPersonRepository.GetById(salespersonId.Value)?.Name ?? salespersonId.Value.ToString()
-                : "Unassigned";
+            var previousName = DescribeOwners(currentOwners);
+            var newName = DescribeOwners(newOwners);
 
             _audit.Record(
-                "AssignPOD",
-                "POD",
-                pod.ID.ToString(),
-                $"POD '{pod.Name}' reassigned from {previousName} to {newName} by {person.Name}.",
-                new { Before = new { SalesPersonId = previousPersonId }, After = new { pod.salespersonId } },
-                relatedSalesPersonId: salespersonId ?? previousPersonId);
+                "AssignPod",
+                "Pod",
+                pod.Id.ToString(),
+                $"Pod '{pod.Name}' reassigned from {previousName} to {newName} by {person.Name}.",
+                new { Before = currentOwners, After = newOwners },
+                relatedSalesPersonId: salespersonId ?? currentOwners.FirstOrDefault());
 
-            TempData["SuccessMessage"] = $"POD '{pod.Name}' assigned to {newName}.";
-            return RedirectToAction(nameof(TeamPODs));
+            TempData["SuccessMessage"] = $"Pod '{pod.Name}' assigned to {newName}.";
+            return RedirectToAction(nameof(TeamPods));
         }
 
         // ----------------------------------------------------------- team history
@@ -813,8 +831,8 @@ namespace SalesHierarchy.Web.Controllers
             }
 
             var all = _salesPersonRepository.GetAll().ToList();
-            var team = HierarchyValidator.GetDescendants(person.ID, all);
-            var teamIds = new HashSet<int>(team.Select(p => p.ID)) { person.ID };
+            var team = HierarchyRules.GetTeamMembers(person.Id, all);
+            var teamIds = new HashSet<int>(team.Select(p => p.Id)) { person.Id };
 
             ViewBag.Current = person;
             ViewBag.IsManager = team.Count > 0;
@@ -823,7 +841,7 @@ namespace SalesHierarchy.Web.Controllers
             ViewBag.Action = actionFilter;
             ViewBag.Actions = new[]
             {
-                "Create", "Update", "Delete", "AddMapping", "RemoveMapping", "AssignPOD", "InviteResent", "Disable", "Enable", "PasswordSet"
+                "Create", "Update", "Delete", "AddMapping", "RemoveMapping", "AssignPod", "InviteResent", "Disable", "Enable", "PasswordSet"
             };
 
             if (team.Count == 0)
@@ -876,9 +894,9 @@ namespace SalesHierarchy.Web.Controllers
 
             var all = _salesPersonRepository.GetAll().ToList();
             ViewBag.Current = person;
-            ViewBag.ManagerChain = HierarchyValidator.GetManagerChain(person.ID, all);
-            ViewBag.People = all.GroupBy(p => p.ID).ToDictionary(g => g.Key, g => g.First());
-            return View(HierarchyValidator.GetDescendants(person.ID, all));
+            ViewBag.ManagerChain = HierarchyRules.GetManagers(person.Id, all);
+            ViewBag.People = all.GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
+            return View(HierarchyRules.GetTeamMembers(person.Id, all));
         }
 
         public async Task<IActionResult> TeamDealerAssignments()
@@ -886,11 +904,11 @@ namespace SalesHierarchy.Web.Controllers
             var person = await GetCurrentSalesPersonAsync();
             if (person == null)
             {
-                return View(new List<SalesDealerMapping>());
+                return View(new List<DealerMapping>());
             }
 
             var teamIds = GetTeamIds(person);
-            var people = _salesPersonRepository.GetAll().GroupBy(p => p.ID).ToDictionary(g => g.Key, g => g.First());
+            var people = _salesPersonRepository.GetAll().GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
             var dealers = _dealerRepository.GetAll().GroupBy(d => d.UniqueID).ToDictionary(g => g.Key, g => g.First());
 
             ViewBag.People = people;
@@ -901,10 +919,10 @@ namespace SalesHierarchy.Web.Controllers
                 .Select(id => people[id])
                 .OrderBy(p => p.Name)
                 .ToList();
-            ViewBag.CurrentId = person.ID;
+            ViewBag.CurrentId = person.Id;
             ViewBag.IsManager = IsManager(person);
 
-            var mappings = _mappingRepository.GetAll().Where(m => teamIds.Contains(m.salespersonid)).ToList();
+            var mappings = _mappingRepository.GetAll().Where(m => teamIds.Contains(m.SalesPersonId)).ToList();
             return View(mappings);
         }
 
@@ -936,7 +954,7 @@ namespace SalesHierarchy.Web.Controllers
                 return RedirectToAction(nameof(TeamDealerAssignments));
             }
 
-            var id = _mappingRepository.Add(new SalesDealerMapping { salespersonid = salespersonId, dealerid = dealerId });
+            var id = _mappingRepository.Add(new DealerMapping { SalesPersonId = salespersonId, DealerId = dealerId });
             if (id < 0)
             {
                 TempData["ErrorMessage"] = "That salesperson is already mapped to the selected dealer.";
@@ -947,7 +965,7 @@ namespace SalesHierarchy.Web.Controllers
             var assignedDealer = _dealerRepository.GetById(dealerId)?.Name ?? dealerId.ToString();
             _audit.Record(
                 "AddMapping",
-                "SalesDealerMapping",
+                "DealerMapping",
                 id.ToString(),
                 $"Team dealer assignment added: '{assignedPerson}' to '{assignedDealer}'.",
                 new { SalesPersonId = salespersonId, DealerId = dealerId },
@@ -979,7 +997,7 @@ namespace SalesHierarchy.Web.Controllers
                 return NotFound();
             }
 
-            if (!GetTeamIds(person).Contains(mapping.salespersonid))
+            if (!GetTeamIds(person).Contains(mapping.SalesPersonId))
             {
                 TempData["ErrorMessage"] = "You can only remove dealer assignments for your own team.";
                 return RedirectToAction(nameof(TeamDealerAssignments));
@@ -991,15 +1009,15 @@ namespace SalesHierarchy.Web.Controllers
                 return RedirectToAction(nameof(TeamDealerAssignments));
             }
 
-            var removedPerson = _salesPersonRepository.GetById(mapping.salespersonid)?.Name ?? mapping.salespersonid.ToString();
-            var removedDealer = _dealerRepository.GetById(mapping.dealerid)?.Name ?? mapping.dealerid.ToString();
+            var removedPerson = _salesPersonRepository.GetById(mapping.SalesPersonId)?.Name ?? mapping.SalesPersonId.ToString();
+            var removedDealer = _dealerRepository.GetById(mapping.DealerId)?.Name ?? mapping.DealerId.ToString();
             _audit.Record(
                 "RemoveMapping",
-                "SalesDealerMapping",
+                "DealerMapping",
                 mapping.UniqueID.ToString(),
                 $"Team dealer assignment removed: '{removedPerson}' from '{removedDealer}'.",
-                new { mapping.salespersonid, mapping.dealerid },
-                relatedSalesPersonId: mapping.salespersonid);
+                new { mapping.SalesPersonId, mapping.DealerId },
+                relatedSalesPersonId: mapping.SalesPersonId);
 
             TempData["SuccessMessage"] = "Dealer assignment removed.";
             return RedirectToAction(nameof(TeamDealerAssignments));
@@ -1009,17 +1027,30 @@ namespace SalesHierarchy.Web.Controllers
 
         private bool IsManager(SalesPerson person)
         {
-            return _salesPersonRepository.GetAll().Any(p => p.ManagerId == person.ID);
+            return _salesPersonRepository.GetAll().Any(p => p.ManagerId == person.Id);
         }
 
         private bool CanManage(SalesPerson current, int targetId)
         {
-            return targetId != current.ID && GetTeamIds(current).Contains(targetId);
+            return targetId != current.Id && GetTeamIds(current).Contains(targetId);
         }
 
         private string? GetManagerName(int? managerId)
         {
             return managerId.HasValue ? _salesPersonRepository.GetById(managerId.Value)?.Name : null;
+        }
+
+        private string DescribeOwners(IReadOnlyCollection<int> ownerIds)
+        {
+            if (ownerIds.Count == 0)
+            {
+                return "Unassigned";
+            }
+
+            var names = ownerIds
+                .Select(id => _salesPersonRepository.GetById(id)?.Name ?? id.ToString())
+                .ToList();
+            return string.Join(", ", names);
         }
 
         private async Task<(ApplicationUser? User, string? Error)> GetManagedTeamAccountAsync(string userId, SalesPerson current)
@@ -1035,7 +1066,7 @@ namespace SalesHierarchy.Web.Controllers
                 return (null, "That account is not linked to a salesperson.");
             }
 
-            if (user.SalesPersonId.Value == current.ID)
+            if (user.SalesPersonId.Value == current.Id)
             {
                 return (null, "You cannot manage your own account from team management.");
             }
@@ -1064,7 +1095,7 @@ namespace SalesHierarchy.Web.Controllers
 
             if (_podRepository.HasPodsForSalesPerson(id))
             {
-                dependencies.Add("PODs are still assigned to them.");
+                dependencies.Add("Pods are still assigned to them.");
             }
 
             if (_mappingRepository.HasMappingsForSalesPerson(id))
@@ -1083,10 +1114,10 @@ namespace SalesHierarchy.Web.Controllers
         private HashSet<int> GetTeamIds(SalesPerson person)
         {
             var all = _salesPersonRepository.GetAll().ToList();
-            var ids = new HashSet<int> { person.ID };
-            foreach (var report in HierarchyValidator.GetDescendants(person.ID, all))
+            var ids = new HashSet<int> { person.Id };
+            foreach (var report in HierarchyRules.GetTeamMembers(person.Id, all))
             {
-                ids.Add(report.ID);
+                ids.Add(report.Id);
             }
 
             return ids;

@@ -62,6 +62,16 @@
   flex-basis: 34px;
 }
 
+.auth-brand .brand-logo {
+  max-width: 150px;
+  height: 38px;
+}
+
+.auth-mobile-brand .brand-logo {
+  max-width: 130px;
+  height: 30px;
+}
+
 .auth-brand-name {
   font-size: 14px;
   font-weight: 600;

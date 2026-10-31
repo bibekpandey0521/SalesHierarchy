@@ -1,0 +1,46 @@
+@model SalesHierarchy.Core.Models.PodStation
+@{
+    ViewData["Title"] = "Delete Pod station";
+    var pods = ViewBag.Pods as List<SalesHierarchy.Core.Models.Pod> ?? new List<SalesHierarchy.Core.Models.Pod>();
+    var blocked = pods.Count > 0;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Delete Pod station</h1>
+        <p class="page-subtitle">This action cannot be undone.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-ghost">Back to list</a>
+</div>
+
+<div class="card-clean form-card">
+    <div class="card-body">
+        <div class="alert alert-warning border-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            You are about to delete <strong>@Model.Name</strong>.
+        </div>
+
+        @if (blocked)
+        {
+            <div class="alert alert-danger border-0">
+                This station cannot be deleted because @pods.Count Pod(s) are still assigned to it. Reassign or delete those Pods first.
+            </div>
+            <ul class="small text-muted">
+                @foreach (var pod in pods.Take(10))
+                {
+                    <li>@pod.Name</li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="text-muted">No Pods are assigned to this station, so it is safe to delete.</p>
+            <form asp-action="Delete" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">Delete station</button>
+                    <a asp-action="Index" class="btn btn-ghost">Cancel</a>
+                </div>
+            </form>
+        }
+    </div>
+</div>

@@ -35,9 +35,9 @@
         }
         else
         {
-            <p class="text-muted">No subordinates, PODs, dealer mappings, or login accounts reference this record.</p>
+            <p class="text-muted">No subordinates, Pods, dealer mappings, or login accounts reference this record.</p>
             <form asp-action="DeleteTeamMember" method="post">
-                <input type="hidden" name="id" value="@Model.ID" />
+                <input type="hidden" name="id" value="@Model.Id" />
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-danger">Delete team member</button>
                     <a asp-action="MyTeam" class="btn btn-ghost">Cancel</a>

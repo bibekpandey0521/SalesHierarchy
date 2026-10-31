@@ -1,0 +1,107 @@
+@model IEnumerable<SalesHierarchy.Core.Models.SalesPerson>
+@{
+    ViewData["Title"] = "Employee directory";
+    var people = ViewBag.People as Dictionary<int, SalesHierarchy.Core.Models.SalesPerson> ?? new Dictionary<int, SalesHierarchy.Core.Models.SalesPerson>();
+    var query = ViewBag.Query as string;
+    var employeeList = Model.ToList();
+    var totalCount = ViewBag.TotalCount is int total ? total : employeeList.Count;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/hierarchy.css" asp-append-version="true" />
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Employee directory</h1>
+        <p class="page-subtitle">Business records and reporting lines. Login accounts are managed separately.</p>
+    </div>
+    <div class="page-actions">
+        <a asp-action="Hierarchy" asp-controller="Admin" class="btn btn-ghost"><i class="bi bi-diagram-3"></i>Hierarchy</a>
+        <a asp-action="Create" class="btn btn-ghost"><i class="bi bi-plus-lg"></i>New record</a>
+        <a asp-action="CreateAccount" asp-controller="Admin" class="btn btn-brand"><i class="bi bi-person-plus"></i>Create account</a>
+    </div>
+</div>
+
+<div class="toolbar-card">
+    <form method="get" class="toolbar-search">
+        <input type="search" name="q" value="@query" class="form-control form-control-sm" placeholder="Search name or designation..." />
+        <button type="submit" class="btn btn-ghost btn-sm" aria-label="Search employees"><i class="bi bi-search"></i></button>
+        @if (!string.IsNullOrWhiteSpace(query))
+        {
+            <a asp-action="Index" class="btn btn-ghost btn-sm">Clear</a>
+        }
+    </form>
+    <div class="toolbar-meta">
+        <span>@totalCount record(s)</span>
+        <span class="toolbar-divider"></span>
+        <a asp-action="BulkUpload" asp-controller="Admin" class="btn btn-ghost btn-sm"><i class="bi bi-file-earmark-spreadsheet"></i>Bulk upload</a>
+    </div>
+</div>
+
+<div class="card-clean">
+    <div class="card-body p-0">
+        @if (employeeList.Count == 0)
+        {
+            <div class="empty-state">
+                <i class="bi bi-people"></i>
+                <div class="fw-semibold">No salespersons yet</div>
+                <div class="text-hint small">Create a record individually or upload an Excel file.</div>
+                <a asp-action="Create" class="btn btn-brand btn-sm mt-2">Create salesperson</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-clean">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Designation</th>
+                            <th>Reports to</th>
+                            <th>Direct reports</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var person in employeeList)
+                    {
+                        <tr>
+                            <td>
+                                <div class="employee-cell">
+                                    <span class="avatar-initials">@(string.IsNullOrWhiteSpace(person.Name) ? "?" : person.Name.Trim()[..1].ToUpperInvariant())</span>
+                                    <span>
+                                        <span class="employee-name d-block">@person.Name</span>
+                                        <span class="employee-sub d-block">Id-@person.Id.ToString("D4")</span>
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="text-muted">@(string.IsNullOrWhiteSpace(person.Designation) ? "—" : person.Designation)</td>
+                            <td>
+                                @if (person.ManagerId.HasValue && people.TryGetValue(person.ManagerId.Value, out var manager))
+                                {
+                                    <a asp-action="Details" asp-route-id="@manager.Id" class="link-subtle">@manager.Name</a>
+                                }
+                                else
+                                {
+                                    <span class="badge-soft badge-soft-neutral">Top level</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge-count">@people.Values.Count(p => p.ManagerId == person.Id)</span>
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Details" asp-route-id="@person.Id" class="btn btn-sm btn-ghost" title="Details"><i class="bi bi-eye"></i></a>
+                                <a asp-action="Edit" asp-route-id="@person.Id" class="btn btn-sm btn-ghost" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="Delete" asp-route-id="@person.Id" class="btn btn-sm btn-ghost text-danger" title="Delete"><i class="bi bi-trash"></i></a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@await Html.PartialAsync("_Pager", (SalesHierarchy.Web.ViewModels.PaginationViewModel)ViewBag.Pager)

@@ -1,0 +1,253 @@
+@model IEnumerable<SalesHierarchy.Core.Models.Pod>
+@using SalesHierarchy.Core.Models
+@{
+    ViewData["Title"] = "Pod Assignment Management";
+    var stations = ViewBag.Stations as List<PodStation> ?? new List<PodStation>();
+    var selectedStation = ViewBag.SelectedStation as PodStation;
+    var allPods = ViewBag.AllPods as List<Pod> ?? new List<Pod>();
+    var assignedIds = ViewBag.AssignedPodIds as HashSet<int> ?? new HashSet<int>();
+    var unassignedPods = ViewBag.UnassignedPods as List<Pod> ?? new List<Pod>();
+    var owners = ViewBag.Owners as Dictionary<int, SalesPerson> ?? new Dictionary<int, SalesPerson>();
+    var otherStationCount = ViewBag.OtherStationCount is int count ? count : 0;
+    var assignedPods = ViewBag.AssignedPods as List<Pod> ?? Model.ToList();
+    var assignedTable = Model.ToList();
+    var assignedCount = ViewBag.AssignedCount is int assignedTotal ? assignedTotal : assignedPods.Count;
+    var unassignedCount = ViewBag.UnassignedCount is int unassignedTotal ? unassignedTotal : unassignedPods.Count;
+    var assignedPager = ViewBag.AssignedPager as SalesHierarchy.Web.ViewModels.PaginationViewModel;
+    var unassignedPager = ViewBag.UnassignedPager as SalesHierarchy.Web.ViewModels.PaginationViewModel;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pod-multiselect.css" asp-append-version="true" />
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Pod Assignment Management</h1>
+        <p class="page-subtitle">Assign Pods to a station, move them between stations, or remove an assignment.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-ghost">Back to Pods</a>
+</div>
+
+@if (stations.Count == 0)
+{
+    <div class="card-clean">
+        <div class="empty-state">
+            <i class="bi bi-building"></i>
+            <div class="fw-semibold">Create a Pod station first</div>
+            <div class="text-hint small">Station assignments need at least one Pod station.</div>
+            <a asp-action="Create" asp-controller="AdminPodStation" class="btn btn-brand btn-sm mt-2">Create station</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card-clean mb-3">
+        <div class="card-body">
+            <form method="get" asp-action="PodAssignments" class="row g-2 align-items-end">
+                <div class="col-md-6">
+                    <label for="stationId" class="form-label">Pod station</label>
+                    <select id="stationId" name="stationId" class="form-select" onchange="this.form.submit()">
+                        @foreach (var station in stations)
+                        {
+                            <option value="@station.Id" selected="@(selectedStation?.Id == station.Id ? "selected" : null)">
+                                @station.Name — OSS @station.OSSPODStationId
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <span class="text-hint small">@allPods.Count Pod(s) in master data · @otherStationCount assigned to other stations</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (selectedStation != null)
+    {
+        <div class="summary-row">
+            <div class="summary-tile">
+                <div class="summary-tile-label">Assigned here</div>
+                <div class="summary-tile-value">@assignedCount</div>
+                <div class="summary-tile-hint">@selectedStation.Name</div>
+            </div>
+            <div class="summary-tile">
+                <div class="summary-tile-label">Unassigned</div>
+                <div class="summary-tile-value">@unassignedCount</div>
+                <div class="summary-tile-hint">No station yet</div>
+            </div>
+            <div class="summary-tile">
+                <div class="summary-tile-label">Other stations</div>
+                <div class="summary-tile-value">@otherStationCount</div>
+                <div class="summary-tile-hint">Can be reassigned here</div>
+            </div>
+            <div class="summary-tile">
+                <div class="summary-tile-label">OSS station Id</div>
+                <div class="summary-tile-value mono">@selectedStation.OSSPODStationId</div>
+                <div class="summary-tile-hint">Unique external key</div>
+            </div>
+        </div>
+
+        <div class="card-clean form-card">
+            <div class="card-body">
+                <form asp-action="SavePodAssignments" method="post" novalidate>
+                    <input type="hidden" name="stationId" value="@selectedStation.Id" />
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                    <label class="form-label" for="podSearch">Pods assigned to @selectedStation.Name</label>
+                    <div class="pod-multiselect" data-pod-multiselect
+                         data-no-results="No Pods match your search."
+                         data-no-options="No Pods are available yet. Create Pod master data first.">
+                        <div class="pod-multiselect-control">
+                            <ul class="pod-chips" data-pod-chips aria-live="polite">
+                                @foreach (var pod in assignedPods)
+                                {
+                                    <li class="pod-chip">
+                                        <span>@pod.Name</span>
+                                        <button type="button" class="pod-chip-remove" aria-label="Remove @pod.Name" disabled>&times;</button>
+                                    </li>
+                                }
+                            </ul>
+                            <input type="search" id="podSearch" class="pod-search" data-pod-search
+                                   placeholder="Search Pods by name, OSS Id, station, or owner..."
+                                   autocomplete="off" role="combobox"
+                                   aria-autocomplete="list" aria-expanded="false"
+                                   aria-label="Search Pods" />
+                        </div>
+                        <div class="pod-options" data-pod-options role="listbox" aria-multiselectable="true" hidden>
+                            @foreach (var pod in allPods)
+                            {
+                                var stationName = pod.PODStationId.HasValue && stations.FirstOrDefault(s => s.Id == pod.PODStationId.Value) is PodStation podStation
+                                    ? podStation.Name
+                                    : "Unassigned station";
+                                var ownerName = owners.TryGetValue(pod.Id, out var owner) ? owner.Name : "No owner";
+                                var isSelected = assignedIds.Contains(pod.Id);
+                                <button type="button" class="pod-option @(isSelected ? "is-selected" : "")"
+                                        role="option"
+                                        aria-selected="@(isSelected ? "true" : "false")"
+                                        data-pod-option
+                                        data-pod-id="@pod.Id"
+                                        data-pod-name="@pod.Name"
+                                        data-pod-label="@pod.Name — @stationName"
+                                        data-pod-station="@stationName"
+                                        data-pod-search="@($"{pod.Name} {pod.OSSPODID} {stationName} {ownerName}")"
+                                        data-selected="@(isSelected ? "true" : "false")">
+                                    <span class="pod-option-main">
+                                        <span class="pod-option-name">@pod.Name</span>
+                                        <span class="pod-option-meta">@stationName · OSS @pod.OSSPODID · @ownerName</span>
+                                    </span>
+                                    <span class="pod-option-check" aria-hidden="true"><i class="bi bi-check2"></i></span>
+                                </button>
+                            }
+                            <div class="pod-option-empty" data-pod-empty hidden></div>
+                        </div>
+                        <div class="pod-hidden-inputs" data-pod-inputs>
+                            @foreach (var podId in assignedIds)
+                            {
+                                <input type="hidden" name="PodIds" value="@podId" />
+                            }
+                        </div>
+                    </div>
+                    <div class="form-text text-hint">
+                        Selected Pods belong to this station. Removing a Pod leaves it unassigned; selecting a Pod from another station moves it here.
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mt-4">
+                        <button type="submit" class="btn btn-brand">Save assignments</button>
+                        <button type="submit" class="btn btn-outline-danger"
+                                formaction="@Url.Action("ClearPodAssignments")"
+                                onclick="return confirm('Remove every Pod assignment from this station?');">
+                            Clear station
+                        </button>
+                        <a asp-action="PodAssignments" asp-route-stationId="@selectedStation.Id" class="btn btn-ghost">Reset</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-lg-6">
+                <div class="card-clean">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Assigned to @selectedStation.Name</span>
+                        <span class="badge-soft-neutral">@assignedCount</span>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (assignedTable.Count == 0)
+                        {
+                            <div class="empty-state py-4">
+                                <i class="bi bi-geo-alt"></i>
+                                <div class="text-hint small">No Pods are assigned to this station.</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                                <table class="table table-clean mb-0">
+                                    <thead><tr><th>Pod</th><th>OSS Id</th><th>Owner</th></tr></thead>
+                                    <tbody>
+                                    @foreach (var pod in assignedTable)
+                                    {
+                                        <tr>
+                                            <td class="fw-medium">@pod.Name</td>
+                                            <td class="mono text-hint">@pod.OSSPODID</td>
+                                            <td class="text-hint">@(owners.TryGetValue(pod.Id, out var assignedOwner) ? assignedOwner.Name : "—")</td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        @if (assignedPager != null)
+                        {
+                            <partial name="_Pager" model="assignedPager" />
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card-clean">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Unassigned master Pods</span>
+                        <span class="badge-soft-warning">@unassignedCount</span>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (unassignedPods.Count == 0)
+                        {
+                            <div class="empty-state py-4">
+                                <i class="bi bi-check2-circle"></i>
+                                <div class="text-hint small">Every Pod has a station assignment.</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                                <table class="table table-clean mb-0">
+                                    <thead><tr><th>Pod</th><th>OSS Id</th><th>Owner</th></tr></thead>
+                                    <tbody>
+                                    @foreach (var pod in unassignedPods)
+                                    {
+                                        <tr>
+                                            <td class="fw-medium">@pod.Name</td>
+                                            <td class="mono text-hint">@pod.OSSPODID</td>
+                                            <td class="text-hint">@(owners.TryGetValue(pod.Id, out var unassignedOwner) ? unassignedOwner.Name : "—")</td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        @if (unassignedPager != null)
+                        {
+                            <partial name="_Pager" model="unassignedPager" />
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@section Scripts {
+    <script src="~/js/pod-multiselect.js" asp-append-version="true"></script>
+}

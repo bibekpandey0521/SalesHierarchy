@@ -9,8 +9,8 @@ BEGIN TRANSACTION;
 IF NOT EXISTS (SELECT 1 FROM dbo.PODStation)
 BEGIN
     INSERT INTO dbo.PODStation (OSSPODStationId, Name) VALUES
-        (N'ST-001', N'North Hub'),
-        (N'ST-002', N'South Hub');
+        (9001, N'North Hub'),
+        (9002, N'South Hub');
 END;
 
 IF NOT EXISTS (SELECT 1 FROM dbo.SalesPerson)
@@ -49,9 +49,24 @@ BEGIN
     DECLARE @FieldRep INT = (SELECT TOP (1) ID FROM dbo.SalesPerson WHERE Name = N'Casey Field' ORDER BY ID);
 
     INSERT INTO dbo.POD (OSSPODID, Name, PODStationId, salespersonId) VALUES
-        (N'POD-101', N'North Metro POD', @NorthId, @NorthManager),
-        (N'POD-102', N'North Valley POD', @NorthId, @FieldRep),
-        (N'POD-201', N'South Metro POD', @SouthId, @SouthManager);
+        (9101, N'North Metro POD', @NorthId, @NorthManager),
+        (9102, N'North Valley POD', @NorthId, @FieldRep),
+        (9201, N'South Metro POD', @SouthId, @SouthManager);
+END;
+
+-- Keep the many-to-many ownership table in sync with the demo legacy owner.
+IF OBJECT_ID(N'dbo.SalesPersonPOD', N'U') IS NOT NULL
+   AND OBJECT_ID(N'dbo.POD', N'U') IS NOT NULL
+BEGIN
+    INSERT INTO dbo.SalesPersonPOD (SalesPersonId, PODId)
+    SELECT p.salespersonId, p.ID
+    FROM dbo.POD AS p
+    WHERE p.salespersonId IS NOT NULL
+      AND NOT EXISTS
+      (
+          SELECT 1 FROM dbo.SalesPersonPOD AS x
+          WHERE x.SalesPersonId = p.salespersonId AND x.PODId = p.ID
+      );
 END;
 
 IF NOT EXISTS (SELECT 1 FROM dbo.salesdealermapping)
@@ -64,7 +79,7 @@ BEGIN
     DECLARE @Prairie INT = (SELECT TOP (1) UniqueID FROM dbo.Dealer WHERE Code = N'D-1003');
     DECLARE @Coastal INT = (SELECT TOP (1) UniqueID FROM dbo.Dealer WHERE Code = N'D-1004');
 
-    INSERT INTO dbo.salesdealermapping (salespersonid, dealerid) VALUES
+    INSERT INTO dbo.salesdealermapping (SalesPersonId, DealerId) VALUES
         (@NorthManagerId2, @Summit),
         (@FieldRepId, @Lakeside),
         (@SouthManagerId2, @Prairie),

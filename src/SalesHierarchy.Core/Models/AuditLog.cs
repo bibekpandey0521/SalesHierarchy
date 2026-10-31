@@ -8,7 +8,7 @@ namespace SalesHierarchy.Core.Models
     /// </summary>
     public class AuditLog
     {
-        public long ID { get; set; }
+        public long Id { get; set; }
         public DateTime OccurredUtc { get; set; } = DateTime.UtcNow;
         public string? UserEmail { get; set; }
         public string Action { get; set; } = string.Empty;
@@ -19,7 +19,7 @@ namespace SalesHierarchy.Core.Models
 
         /// <summary>
         /// Optional salesperson this event belongs to (for example the owner of a
-        /// reassigned POD or the subject of an account change). Used to scope history
+        /// reassigned Pod or the subject of an account change). Used to scope history
         /// to a manager's own subtree without parsing the details payload.
         /// </summary>
         public int? RelatedSalesPersonId { get; set; }

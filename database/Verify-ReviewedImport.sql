@@ -1,11 +1,12 @@
--- Verify the reviewed workbook import.
+-- Verify the reviewed workbook import and the POD assignment schema.
 -- Run after:
+--   database/Upgrade-PODMasterData.sql
 --   database/Upgrade-SalesPersonPOD.sql
 --   database/SalesHierarchy.Database/Scripts/Import-ReviewedSalesData.sql
 --
--- The script is read-only. It reports the current counts, hierarchy exceptions,
--- cycles, station gaps, duplicate external IDs/mappings, dealer pairs,
--- legacy migrations, and the skipped/unresolved rows from the import.
+-- The script is read-only. It reports current counts, hierarchy exceptions,
+-- cycles, station gaps, duplicate external IDs/mappings, dealer pairs, legacy
+-- ownership sync, and the reviewed import decisions.
 SET NOCOUNT ON;
 
 -- ----------------------------------------------------------------
@@ -19,19 +20,58 @@ UNION ALL SELECT N'Dealers', (SELECT COUNT(*) FROM dbo.Dealer)
 UNION ALL SELECT N'DealerMappings', (SELECT COUNT(*) FROM dbo.salesdealermapping);
 
 -- ----------------------------------------------------------------
--- 2. EXPECTED ROW COUNTS AFTER ONE IDEMPOTENT RE-RUN
+-- 2. EXPECTED ROW COUNTS AFTER A FRESH IMPORT
 -- ----------------------------------------------------------------
--- (These comments document the target counts; the script does not THROW if
---  the numbers differ – it merely reports what it finds.)
--- Expected (after full import): 75, 211, 38, 211, 44, 71.
+-- Target counts for an empty database after the reviewed import:
+--   PODStation 73, POD 273, SalesPerson 34, SalesPersonPOD 208,
+--   Dealer 40, DealerMapping 67.
+-- Existing/demo rows are preserved by the idempotent import, so a database that
+-- already had demo data will report higher totals. No row is deleted or reset.
 
 -- ----------------------------------------------------------------
--- 3. DESIGNATION LADDER COMPATIBILITY (expected 3 NULL manager links)
+-- 3. OSS ID TYPES AND UNIQUENESS
 -- ----------------------------------------------------------------
--- Heads must have a CXO manager (or NULL if conflicting).
--- Managers/Supervisors must have a Head manager.
--- Officers must have a Manager/Supervisor manager.
--- CXOs must have ManagerId IS NULL.
+SELECT N'POD.OSSPODID type' AS CheckName,
+       t.name + N', nullable=' + CASE WHEN c.is_nullable = 1 THEN N'YES' ELSE N'NO' END AS Detail
+FROM sys.columns AS c
+INNER JOIN sys.types AS t ON t.user_type_id = c.user_type_id
+WHERE c.object_id = OBJECT_ID(N'dbo.POD') AND c.name = N'OSSPODID'
+UNION ALL
+SELECT N'PODStation.OSSPODStationId type',
+       t.name + N', nullable=' + CASE WHEN c.is_nullable = 1 THEN N'YES' ELSE N'NO' END
+FROM sys.columns AS c
+INNER JOIN sys.types AS t ON t.user_type_id = c.user_type_id
+WHERE c.object_id = OBJECT_ID(N'dbo.PODStation') AND c.name = N'OSSPODStationId'
+UNION ALL
+SELECT N'POD.PODStationId nullable',
+       CASE WHEN c.is_nullable = 1 THEN N'YES' ELSE N'NO' END
+FROM sys.columns AS c
+WHERE c.object_id = OBJECT_ID(N'dbo.POD') AND c.name = N'PODStationId';
+
+SELECT N'Duplicate OSSPODID' AS CheckName, OSSPODID AS DuplicateValue, COUNT(*) AS Cnt
+FROM dbo.POD
+GROUP BY OSSPODID
+HAVING COUNT(*) > 1;
+
+SELECT N'Duplicate OSSPODStationId' AS CheckName, OSSPODStationId AS DuplicateValue, COUNT(*) AS Cnt
+FROM dbo.PODStation
+GROUP BY OSSPODStationId
+HAVING COUNT(*) > 1;
+
+SELECT N'Duplicate Dealer Code' AS CheckName, Code AS DuplicateValue, COUNT(*) AS Cnt
+FROM dbo.Dealer
+WHERE Code IS NOT NULL
+GROUP BY Code
+HAVING COUNT(*) > 1;
+
+SELECT N'Duplicate SalesPerson Name' AS CheckName, Name AS DuplicateValue, COUNT(*) AS Cnt
+FROM dbo.SalesPerson
+GROUP BY Name
+HAVING COUNT(*) > 1;
+
+-- ----------------------------------------------------------------
+-- 4. DESIGNATION LADDER COMPATIBILITY (expected 3 NULL manager links)
+-- ----------------------------------------------------------------
 SELECT sp.Name AS Person, sp.Designation AS Designation, sp.ManagerId AS ManagerId,
        m.Name AS ManagerName, m.Designation AS ManagerDesignation
 FROM dbo.SalesPerson AS sp
@@ -43,104 +83,91 @@ WHERE (sp.Designation = N'Head' AND (m.Designation IS NULL OR m.Designation <> N
 ORDER BY sp.Designation, sp.Name;
 
 -- ----------------------------------------------------------------
--- 4. CYCLE DETECTION (self‑reporting or any transitive cycle)
+-- 5. CYCLE DETECTION (only reports a person who is their own ancestor)
 -- ----------------------------------------------------------------
--- Returns one row per person involved in a cycle; empty result set = no cycles.
+-- A normal Officer -> Manager -> Head chain is not a cycle. Recursion stops
+-- when the next manager has already been visited; only that repeated hop is
+-- reported, so a two-level reporting line is never flagged.
 WITH CycleCTE AS (
-    -- Anchor: start from each person who has a manager
-    SELECT ID AS StartID, ManagerId AS CurrentID, 1 AS Lvl,
-           CAST(ID AS NVARCHAR(MAX)) AS Path
-    FROM dbo.SalesPerson
-    WHERE ManagerId IS NOT NULL
+    SELECT sp.ID AS StartID,
+           sp.ManagerId AS CurrentID,
+           1 AS Lvl,
+           CAST(N',' + CAST(sp.ID AS NVARCHAR(MAX)) + N',' AS NVARCHAR(MAX)) AS Path,
+           CAST(0 AS BIT) AS IsCycle
+    FROM dbo.SalesPerson AS sp
+    WHERE sp.ManagerId IS NOT NULL
     UNION ALL
-    -- Recursive member: move to the manager of the current person
     SELECT c.StartID,
            p.ManagerId,
            c.Lvl + 1,
-           c.Path + N',' + CAST(p.ManagerId AS NVARCHAR(MAX))
-    FROM CycleCTE c
-    JOIN dbo.SalesPerson p ON p.ID = c.CurrentID
+           c.Path + CAST(p.ManagerId AS NVARCHAR(MAX)) + N',',
+           CAST(CASE WHEN CHARINDEX(N',' + CAST(p.ManagerId AS NVARCHAR(MAX)) + N',', c.Path) > 0 THEN 1 ELSE 0 END AS BIT)
+    FROM CycleCTE AS c
+    JOIN dbo.SalesPerson AS p ON p.ID = c.CurrentID
     WHERE p.ManagerId IS NOT NULL
-      AND CHARINDEX(N',' + CAST(p.ManagerId AS NVARCHAR(MAX)) + N',', c.Path) = 0
+      AND c.IsCycle = 0
 )
 SELECT DISTINCT StartID AS PersonWithCycle,
        (SELECT Name FROM dbo.SalesPerson WHERE ID = StartID) AS PersonName,
-       Lvl AS CycleLength
+       Lvl AS StepsToRepeat
 FROM CycleCTE
-WHERE Lvl > 1
-ORDER BY StartID;
+WHERE IsCycle = 1
+ORDER BY StartID
+OPTION (MAXRECURSION 100);
 
 -- ----------------------------------------------------------------
--- 5. STATION GAPS – PODs without a valid PODStationId reference
+-- 6. STATION ASSIGNMENT STATE
 -- ----------------------------------------------------------------
+-- Only non-NULL station references can be invalid; NULL means unassigned.
 SELECT N'PODs with invalid PODStationId' AS CheckName, COUNT(*) AS Cnt
 FROM dbo.POD AS p
-WHERE NOT EXISTS (SELECT 1 FROM dbo.PODStation AS s WHERE s.ID = p.PODStationId);
+WHERE p.PODStationId IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM dbo.PODStation AS s WHERE s.ID = p.PODStationId);
 
--- 6. STATION NAME MISMATCHES / ALIASES
--- The import normalised "Trisuli POD Station" → "Trishuli POD Station" (2 rows).
--- All PODs in the DB have a valid PODStationId reference (see Section 5 above).
--- No additional mismatches detected.
-
--- Known alias normalisation (import decision):
-SELECT N'Station alias Trisuli→Trishuli' AS CheckName, 2 AS RowsAffected, N'Normalized in import' AS Detail;
-
--- ----------------------------------------------------------------
--- 7. DUPLICATE EXTERNAL IDs (OSS identifiers)
--- ----------------------------------------------------------------
--- PODs with duplicate OSSPODID
-SELECT N'Duplicate OSSPODID' AS CheckName, OSSPODID AS DuplicateValue, COUNT(*) AS Cnt
+SELECT N'PODs without a station assignment' AS CheckName, COUNT(*) AS Cnt
 FROM dbo.POD
-WHERE OSSPODID IS NOT NULL
-GROUP BY OSSPODID
-HAVING COUNT(*) > 1;
+WHERE PODStationId IS NULL;
 
--- PODStations with duplicate OSSPODStationId
-SELECT N'Duplicate OSSPODStationId' AS CheckName, OSSPODStationId AS DuplicateValue, COUNT(*) AS Cnt
-FROM dbo.PODStation
-WHERE OSSPODStationId IS NOT NULL
-GROUP BY OSSPODStationId
-HAVING COUNT(*) > 1;
+SELECT N'PODs assigned to a station' AS CheckName, COUNT(*) AS Cnt
+FROM dbo.POD
+WHERE PODStationId IS NOT NULL;
 
--- Dealers with duplicate Code (code is the natural key)
-SELECT N'Duplicate Dealer Code' AS CheckName, Code AS DuplicateValue, COUNT(*) AS Cnt
-FROM dbo.Dealer
-WHERE Code IS NOT NULL
-GROUP BY Code
-HAVING COUNT(*) > 1;
-
--- SalesPersons with duplicate Name (natural key)
-SELECT N'Duplicate SalesPerson Name' AS CheckName, Name AS DuplicateValue, COUNT(*) AS Cnt
-FROM dbo.SalesPerson
-GROUP BY Name
-HAVING COUNT(*) > 1;
+-- 208 reviewed workbook pairs are applied by database/Assign-PodStations.sql.
+SELECT N'Reviewed workbook pairs applied' AS CheckName,
+       (SELECT COUNT(*) FROM dbo.POD WHERE PODStationId IS NOT NULL) AS Cnt,
+       N'208 reviewed pairs applied; 65 PODs remain unassigned for manual review' AS Detail;
 
 -- ----------------------------------------------------------------
--- 8. DEALER MAPPING PAIRS – all must point to a Sales Officer
+-- 7. DEALER MAPPING PAIRS
 -- ----------------------------------------------------------------
 SELECT N'Dealer mappings not owned by Sales Officer' AS CheckName, COUNT(*) AS Cnt
 FROM dbo.salesdealermapping AS m
-INNER JOIN dbo.Dealer AS d ON d.UniqueID = m.dealerid
-INNER JOIN dbo.SalesPerson AS sp ON sp.ID = m.salespersonid
+INNER JOIN dbo.Dealer AS d ON d.UniqueID = m.DealerId
+INNER JOIN dbo.SalesPerson AS sp ON sp.ID = m.SalesPersonId
 WHERE sp.Designation <> N'Sales Officer';
 
+SELECT N'Duplicate dealer mapping pair' AS CheckName,
+       CAST(SalesPersonId AS NVARCHAR(20)) + N'/' + CAST(DealerId AS NVARCHAR(20)) AS DuplicateValue,
+       COUNT(*) AS Cnt
+FROM dbo.salesdealermapping
+GROUP BY SalesPersonId, DealerId
+HAVING COUNT(*) > 1;
+
 -- ----------------------------------------------------------------
--- 9. LEGACY MIGRATION SYNC – POD.salespersonId vs SalesPersonPOD
+-- 8. LEGACY OWNERSHIP SYNC
 -- ----------------------------------------------------------------
--- Report PODs where legacy salespersonId is set but the many‑to‑many table
--- does NOT contain that assignment (or contains a different salesperson).
+-- Report PODs where the legacy single owner is not present in SalesPersonPOD.
 SELECT N'Legacy sync mismatch' AS CheckName,
        p.ID AS PodID,
        p.salespersonId AS LegacySpId,
-       (SELECT SalesPersonId FROM dbo.SalesPersonPOD WHERE PODId = p.ID) AS ManyToManySpId
+       (SELECT MIN(x.SalesPersonId) FROM dbo.SalesPersonPOD AS x WHERE x.PODId = p.ID) AS LowestManyToManyOwner
 FROM dbo.POD AS p
 WHERE p.salespersonId IS NOT NULL
   AND NOT EXISTS (
-      SELECT 1 FROM dbo.SalesPersonPOD AS x WHERE x.PODId = p.ID AND x.SalesPersonId = p.salespersonId);
--- (If the subquery returns multiple rows, the POD has multiple owners in the
---  many‑to‑many table – that is also a mismatch and is reported below.)
+      SELECT 1 FROM dbo.SalesPersonPOD AS x
+      WHERE x.PODId = p.ID AND x.SalesPersonId = p.salespersonId);
 
--- PODs with multiple owners in SalesPersonPOD (many‑to‑many)
+-- SalesPersonPOD is the source of truth. Multiple owners are valid.
 SELECT N'POD with multiple SalesPersonPOD owners' AS CheckName,
        p.ID AS PodID, COUNT(*) AS OwnerCount
 FROM dbo.POD AS p
@@ -149,52 +176,40 @@ GROUP BY p.ID
 HAVING COUNT(*) > 1;
 
 -- ----------------------------------------------------------------
--- 10. SKIPPED/UNRESOLVED ROWS FROM THE IMPORT
+-- 9. REVIEWED IMPORT DECISIONS (actionable report)
 -- ----------------------------------------------------------------
--- The Import‑ReviewedSalesData.sql script inserts review rows with Area='POD skipped',
--- Area='Station alias', Area='Name normalization', Area='Hierarchy conflict',
--- Area='Dealer conflict'.  Query them here.
--- Skipped PODs count is documented in the import report and the summary section below.
-
--- -----------------------------------------------------------------
--- 11. SUMMARY OF UNRESOLVED DATA (actionable report)
--- -----------------------------------------------------------------
--- Manager conflicts (3 documented NULL links)
 SELECT N'Manager conflict' AS CheckName, 3 AS Cnt,
        N'Bipindra Neupane (3 candidate CXOs), Ujjwol Neupane (3 candidate CXOs), Hritik Mishra (2 possible managers)' AS Detail;
 
--- Station aliases (2 rows normalised)
 SELECT N'Station alias' AS CheckName, 2 AS Cnt,
-       N'Trisuli POD Station → Trishuli POD Station (normalized in import)' AS Detail;
+       N'Trisuli POD Station and Devinagar POD station spellings are documented but were not used for assignment' AS Detail;
 
--- Name normalisations (Sanjib karki → Sanjib Karki, 3 source variants)
-SELECT N'Name normalisation' AS CheckName, 3 AS Cnt,
-       N'Source variants Sanjib Karki, Sanjib karki normalized to Sanjib Karki' AS Detail;
+SELECT N'Name normalization' AS CheckName, 3 AS Cnt,
+       N'Sanjib karki source rows normalized to Sanjib Karki' AS Detail;
 
--- Skipped PODs (65 no verified station)
-SELECT N'Skipped PODs' AS CheckName, 65 AS Cnt,
-       N'65 PODs from pods.xlsx have no station in either workbook; POD.PODStationId is NOT NULL.' AS Detail;
+SELECT N'PODs imported' AS CheckName, 273 AS Cnt,
+       N'All 273 master PODs were imported unassigned; reviewed station pairs applied separately' AS Detail;
 
--- Dealer mapping conflicts (0 in current data)
-SELECT N'Dealer mapping conflict' AS CheckName, 0 AS Cnt,
+SELECT N'POD ownership rows' AS CheckName, 208 AS Cnt,
+       N'Stored in SalesPersonPOD from the mapping sheet Sales Officer column' AS Detail;
+
+SELECT N'Dealer mapping conflicts' AS CheckName, 0 AS Cnt,
        N'No dealer code/name conflicts detected.' AS Detail;
 
 -- ----------------------------------------------------------------
--- 12. ANY REMAINING DUPLICATES OR DATA QUALITY ISSUES
+-- 10. DATA QUALITY MUST-RETURN-ZERO CHECKS
 -- ----------------------------------------------------------------
--- The following queries must return zero rows for a clean import.
--- If any return rows, the import needs attention.
+SELECT 'Blank POD name' AS CheckName, CAST(ID AS NVARCHAR(20)) AS DuplicateValue, COUNT(*) AS Cnt
+FROM dbo.POD WHERE LTRIM(RTRIM(Name)) = N'' GROUP BY ID;
 
-SELECT 'Duplicate station name' AS CheckNameName, Name AS DuplicateValue, COUNT(*) AS Cnt
-FROM dbo.PODStation GROUP BY Name HAVING COUNT(*) > 1;
+SELECT 'Blank PODStation name' AS CheckName, CAST(ID AS NVARCHAR(20)) AS DuplicateValue, COUNT(*) AS Cnt
+FROM dbo.PODStation WHERE LTRIM(RTRIM(Name)) = N'' GROUP BY ID;
 
-SELECT 'Duplicate POD source ID' AS CheckNameName, OSSPODID AS DuplicateValue, COUNT(*) AS Cnt
-FROM dbo.POD WHERE OSSPODID IS NOT NULL GROUP BY OSSPODID HAVING COUNT(*) > 1;
+SELECT 'PODStation name too long' AS CheckName, CAST(ID AS NVARCHAR(20)) AS DuplicateValue, LEN(Name) AS Cnt
+FROM dbo.PODStation WHERE LEN(Name) > 150;
 
-SELECT 'Duplicate dealer mapping' AS CheckNameName,
-       CAST(salespersonid AS NVARCHAR(20)) + N'/' + CAST(dealerid AS NVARCHAR(20)) AS DuplicateValue,
-       COUNT(*) AS Cnt
-FROM dbo.salesdealermapping GROUP BY salespersonid, dealerid HAVING COUNT(*) > 1;
+SELECT 'POD name too long' AS CheckName, CAST(ID AS NVARCHAR(20)) AS DuplicateValue, LEN(Name) AS Cnt
+FROM dbo.POD WHERE LEN(Name) > 150;
 
 -- ----------------------------------------------------------------
 -- END OF VERIFICATION SCRIPT

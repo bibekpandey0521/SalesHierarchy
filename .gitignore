@@ -4,6 +4,10 @@ obj/
 .vs/
 TestResults/
 
+# SQL Server database project build artifacts
+*.dbmdl
+*.dacpac
+
 # Local developer settings and secrets
 appsettings.Development.local.json
 src/SalesHierarchy.Web/App_Data/

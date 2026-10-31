@@ -331,7 +331,7 @@ namespace SalesHierarchy.Web.Services
                     continue;
                 }
 
-                if (HierarchyValidator.WouldCreateCycle(person.ID, managerId, allPeople))
+                if (HierarchyRules.CreatesCycle(person.Id, managerId, allPeople))
                 {
                     row.Warnings.Add("Circular hierarchy detected; record left without a manager.");
                     continue;
@@ -340,7 +340,7 @@ namespace SalesHierarchy.Web.Services
                 person.ManagerId = managerId;
                 if (_salesPersonRepository.Update(person))
                 {
-                    allPeople.RemoveAll(p => p.ID == person.ID);
+                    allPeople.RemoveAll(p => p.Id == person.Id);
                     allPeople.Add(person);
                 }
             }

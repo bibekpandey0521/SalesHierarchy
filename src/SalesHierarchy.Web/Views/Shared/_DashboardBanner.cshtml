@@ -1,0 +1,19 @@
+@using System.IO
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
+@{
+    var root = HostEnvironment.WebRootPath ?? string.Empty;
+    var branding = Path.Combine(root, "images", "branding");
+    var bannerFile = new[] { "dishhome-banner.jpg", "dishhome-banner.png" }
+        .FirstOrDefault(name => File.Exists(Path.Combine(branding, name)));
+}
+<section class="dashboard-banner @(bannerFile is null ? "is-text-only" : string.Empty)">
+    @if (bannerFile is not null)
+    {
+        <img src="~/images/branding/@bannerFile" alt="DishHome" class="dashboard-banner-image" />
+    }
+    <div class="dashboard-banner-copy">
+        <span class="dashboard-banner-eyebrow">DishHome &middot; Sales operations</span>
+        <h2>Sales hierarchy workspace</h2>
+        <p>People, POD coverage, dealers and reporting lines in one auditable place.</p>
+    </div>
+</section>

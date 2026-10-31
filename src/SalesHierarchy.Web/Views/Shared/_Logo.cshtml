@@ -1,0 +1,17 @@
+@using System.IO
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
+@{
+    var root = HostEnvironment.WebRootPath ?? string.Empty;
+    var branding = Path.Combine(root, "images", "branding");
+    var logoFile = new[] { "dishhome-logo.png", "dishhome-logo.svg" }
+        .FirstOrDefault(name => File.Exists(Path.Combine(branding, name)));
+    var sizeClass = ViewData["LogoSize"] as string ?? string.Empty;
+}
+@if (logoFile is not null)
+{
+    <img src="~/images/branding/@logoFile" alt="DishHome" class="brand-logo @sizeClass" />
+}
+else
+{
+    <span class="brand-mark @sizeClass" aria-hidden="true"><i class="bi bi-broadcast-pin"></i></span>
+}

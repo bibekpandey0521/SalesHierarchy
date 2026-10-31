@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SalesHierarchy.Core.Interfaces.Repositories;
 using SalesHierarchy.Core.DTOs;
 
@@ -12,10 +12,10 @@ namespace SalesHierarchy.Web.Controllers
     public class PublicController : Controller
     {
         private readonly ISalesPersonRepository _salesPersonRepository;
-        private readonly IPODRepository _podRepository;
-        private readonly IPODStationRepository _podStationRepository;
+        private readonly IPodRepository _podRepository;
+        private readonly IPodStationRepository _podStationRepository;
 
-        public PublicController(ISalesPersonRepository salesPersonRepository, IPODRepository podRepository, IPODStationRepository podStationRepository)
+        public PublicController(ISalesPersonRepository salesPersonRepository, IPodRepository podRepository, IPodStationRepository podStationRepository)
         {
             _salesPersonRepository = salesPersonRepository;
             _podRepository = podRepository;
@@ -25,15 +25,15 @@ namespace SalesHierarchy.Web.Controllers
         public IActionResult Index()
         {
             ViewBag.SalesPersonCount = _salesPersonRepository.GetAll().Count();
-            ViewBag.PODCount = _podRepository.GetAll().Count();
-            ViewBag.PODStationCount = _podStationRepository.GetAll().Count();
+            ViewBag.PodCount = _podRepository.GetAll().Count();
+            ViewBag.PodStationCount = _podStationRepository.GetAll().Count();
             return View();
         }
 
         public IActionResult SalesHierarchy(string? q)
         {
             var people = _salesPersonRepository.GetAll()
-                .Select(p => new PublicSalesPersonDto { ID = p.ID, Name = p.Name, Designation = p.Designation, ManagerId = p.ManagerId })
+                .Select(p => new PublicSalesPersonDto { Id = p.Id, Name = p.Name, Designation = p.Designation, ManagerId = p.ManagerId })
                 .ToList();
 
             if (!string.IsNullOrWhiteSpace(q))
@@ -48,10 +48,10 @@ namespace SalesHierarchy.Web.Controllers
             return View(people);
         }
 
-        public IActionResult PODStations(string? q)
+        public IActionResult PodStations(string? q)
         {
             var stations = _podStationRepository.GetAll()
-                .Select(s => new PublicPODStationDto { ID = s.ID, Name = s.Name })
+                .Select(s => new PublicPodStationDto { Id = s.Id, Name = s.Name })
                 .ToList();
 
             if (!string.IsNullOrWhiteSpace(q))
@@ -63,17 +63,17 @@ namespace SalesHierarchy.Web.Controllers
             return View(stations);
         }
 
-        public IActionResult PODs(string? q)
+        public IActionResult Pods(string? q)
         {
             var pods = _podRepository.GetAll()
-                .Select(p => new PublicPODDto { ID = p.ID, Name = p.Name, OSSPODID = p.OSSPODID })
+                .Select(p => new PublicPodDto { Id = p.Id, Name = p.Name, OSSPODID = p.OSSPODID })
                 .ToList();
 
             if (!string.IsNullOrWhiteSpace(q))
             {
                 pods = pods.Where(p =>
                     p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                    (p.OSSPODID?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false))
+                    p.OSSPODID.ToString().Contains(q, StringComparison.OrdinalIgnoreCase))
                     .ToList();
             }
 

@@ -11,16 +11,18 @@
 --   Name            = the workbook station name
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 
 DECLARE @Source TABLE
 (
-    OSSPODStationId NVARCHAR(50) NOT NULL,
-    Name NVARCHAR(400) NOT NULL
+    OSSPODStationId INT NOT NULL,
+    Name NVARCHAR(150) NOT NULL
 );
 
 -- Add verified workbook rows here, for example:
 -- INSERT INTO @Source (OSSPODStationId, Name) VALUES
---     (N'...', N'...');
+--     (1, N'Dharan POD Station');
 
 IF NOT EXISTS (SELECT 1 FROM @Source)
 BEGIN

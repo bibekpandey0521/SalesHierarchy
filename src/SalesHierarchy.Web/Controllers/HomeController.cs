@@ -12,16 +12,16 @@ namespace SalesHierarchy.Web.Controllers;
 public class HomeController : Controller
 {
     private readonly ISalesPersonRepository _salesPersonRepository;
-    private readonly IPODStationRepository _podStationRepository;
-    private readonly IPODRepository _podRepository;
+    private readonly IPodStationRepository _podStationRepository;
+    private readonly IPodRepository _podRepository;
     private readonly IDealerRepository _dealerRepository;
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly UserManager<ApplicationUser> _userManager;
 
     public HomeController(
         ISalesPersonRepository salesPersonRepository,
-        IPODStationRepository podStationRepository,
-        IPODRepository podRepository,
+        IPodStationRepository podStationRepository,
+        IPodRepository podRepository,
         IDealerRepository dealerRepository,
         IAuditLogRepository auditLogRepository,
         UserManager<ApplicationUser> userManager)
@@ -56,28 +56,41 @@ public class HomeController : Controller
         try
         {
             var people = _salesPersonRepository.GetAll().ToList();
-            var peopleById = people.ToDictionary(p => p.ID);
+            var peopleById = people.ToDictionary(p => p.Id);
             var pods = _podRepository.GetAll().ToList();
             var stations = _podStationRepository.GetAll()
-                .GroupBy(s => s.ID)
+                .GroupBy(s => s.Id)
                 .ToDictionary(g => g.Key, g => g.First());
+            var assignments = _salesPersonRepository.GetAllPodAssignments().ToList();
+            var ownersByPod = assignments
+                .Where(a => peopleById.ContainsKey(a.SalesPersonId))
+                .GroupBy(a => a.PodId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(a => a.SalesPersonId).Distinct().OrderBy(id => id).ToList());
 
             var currentPerson = !isAdmin && user?.SalesPersonId is int salesPersonId &&
                                 peopleById.TryGetValue(salesPersonId, out var person)
                 ? person
                 : null;
             var visibleIds = isAdmin
-                ? people.Select(p => p.ID).ToHashSet()
-                : GetSubtreeIds(people, currentPerson?.ID);
-            var visiblePeople = people.Where(p => visibleIds.Contains(p.ID)).ToList();
-            var visiblePods = pods.Where(p => p.salespersonId is int ownerId && visibleIds.Contains(ownerId)).ToList();
+                ? people.Select(p => p.Id).ToHashSet()
+                : GetSubtreeIds(people, currentPerson?.Id);
+            var visiblePeople = people.Where(p => visibleIds.Contains(p.Id)).ToList();
+            var visiblePodIds = isAdmin
+                ? pods.Select(p => p.Id).ToHashSet()
+                : ownersByPod
+                    .Where(kvp => kvp.Value.Any(visibleIds.Contains))
+                    .Select(kvp => kvp.Key)
+                    .ToHashSet();
+            var visiblePods = pods.Where(p => visiblePodIds.Contains(p.Id)).ToList();
 
             model.DisplayName = currentPerson?.Name ?? model.DisplayName;
             model.EmployeeCount = visiblePeople.Count;
             model.DealerCount = isAdmin ? _dealerRepository.GetAll().Count() : 0;
             model.StationCount = stations.Count;
-            model.PodCount = isAdmin ? pods.Count : visiblePods.Count;
-            model.AssignedPods = isAdmin ? pods.Count(p => p.salespersonId.HasValue) : visiblePods.Count;
+            model.PodCount = visiblePods.Count;
+            model.AssignedPods = visiblePods.Count(p => ownersByPod.ContainsKey(p.Id));
             model.Levels = CountLevels(visiblePeople);
 
             var directReports = people
@@ -85,7 +98,7 @@ public class HomeController : Controller
                 .GroupBy(p => p.ManagerId!.Value)
                 .ToDictionary(g => g.Key, g => g.Count());
             model.RecentEmployees = visiblePeople
-                .OrderByDescending(p => directReports.GetValueOrDefault(p.ID))
+                .OrderByDescending(p => directReports.GetValueOrDefault(p.Id))
                 .ThenBy(p => p.Name)
                 .Take(5)
                 .ToList();
@@ -95,9 +108,11 @@ public class HomeController : Controller
                 .Select(pod => new PodRow
                 {
                     Pod = pod,
-                    StationName = stations.TryGetValue(pod.PODStationId, out var station) ? station.Name : "Unassigned station",
-                    SalesPersonName = pod.salespersonId is int ownerId && peopleById.TryGetValue(ownerId, out var owner)
-                        ? owner.Name
+                    StationName = pod.PODStationId.HasValue && stations.TryGetValue(pod.PODStationId.Value, out var station)
+                        ? station.Name
+                        : "Unassigned station",
+                    SalesPersonName = ownersByPod.TryGetValue(pod.Id, out var ownerIds) && ownerIds.Count > 0
+                        ? string.Join(", ", ownerIds.Select(id => peopleById.TryGetValue(id, out var owner) ? owner.Name : $"#{id}"))
                         : null
                 })
                 .ToList();
@@ -153,7 +168,7 @@ public class HomeController : Controller
             changed = false;
             foreach (var person in people)
             {
-                if (person.ManagerId.HasValue && ids.Contains(person.ManagerId.Value) && ids.Add(person.ID))
+                if (person.ManagerId.HasValue && ids.Contains(person.ManagerId.Value) && ids.Add(person.Id))
                 {
                     changed = true;
                 }
@@ -170,30 +185,30 @@ public class HomeController : Controller
             return 0;
         }
 
-        var byId = people.ToDictionary(p => p.ID);
+        var byId = people.ToDictionary(p => p.Id);
         var depths = new Dictionary<int, int>();
 
         int Depth(SalesPerson person, HashSet<int> path)
         {
-            if (depths.TryGetValue(person.ID, out var known))
+            if (depths.TryGetValue(person.Id, out var known))
             {
                 return known;
             }
 
             if (!person.ManagerId.HasValue ||
                 !byId.TryGetValue(person.ManagerId.Value, out var manager) ||
-                !path.Add(manager.ID))
+                !path.Add(manager.Id))
             {
-                depths[person.ID] = 1;
+                depths[person.Id] = 1;
                 return 1;
             }
 
             var depth = Depth(manager, path) + 1;
-            depths[person.ID] = depth;
+            depths[person.Id] = depth;
             return depth;
         }
 
-        return people.Max(p => Depth(p, new HashSet<int> { p.ID }));
+        return people.Max(p => Depth(p, new HashSet<int> { p.Id }));
     }
 
     private static IReadOnlyList<GrowthPoint> BuildGrowth(IEnumerable<AuditLog> logs)

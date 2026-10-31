@@ -5,4 +5,10 @@
     <Project Path="src/SalesHierarchy.Tests/SalesHierarchy.Tests.csproj" />
     <Project Path="src/SalesHierarchy.Web/SalesHierarchy.Web.csproj" />
   </Folder>
+  <Folder Name="/database/">
+    <Project Path="database/SalesHierarchy.Database/SalesHierarchy.Database.sqlproj" Id="6a150783-62de-4234-a71c-46cbeb8c2193">
+      <Build />
+      <Deploy />
+    </Project>
+  </Folder>
 </Solution>

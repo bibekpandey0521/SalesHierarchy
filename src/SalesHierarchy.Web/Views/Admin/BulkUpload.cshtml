@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Bulk Upload";
 }
 <div class="page-head">
@@ -6,7 +6,7 @@
         <h1 class="page-title">Bulk upload salespersons</h1>
         <p class="page-subtitle">Create salesperson records and login accounts from an Excel file.</p>
     </div>
-    <a asp-action="SalesPersons" class="btn btn-ghost">Back to salespersons</a>
+    <a asp-action="Index" asp-controller="AdminSalesPerson" class="btn btn-ghost">Back to salespersons</a>
 </div>
 
 <div class="row g-3">
@@ -42,7 +42,7 @@
                     <li><i class="bi bi-check2"></i>Email must be unique and must not already have an account.</li>
                     <li><i class="bi bi-check2"></i>ManagerEmail is optional; it can reference another row or an existing account.</li>
                     <li><i class="bi bi-check2"></i>Self-reporting and circular hierarchies are rejected.</li>
-                    <li><i class="bi bi-check2"></i>Passwords are never placed in the file — invited users receive a secure setup link.</li>
+                    <li><i class="bi bi-check2"></i>Passwords are never placed in the file &mdash; invited users receive a secure setup link.</li>
                 </ul>
             </div>
         </div>

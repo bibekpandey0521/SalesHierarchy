@@ -117,6 +117,12 @@ if (Test-Path $upgradeFile) {
     Invoke-SqlFile -Path $upgradeFile -DatabaseName $Database
 }
 
+$podMasterUpgradeFile = Join-Path $scriptDir "Upgrade-PODMasterData.sql"
+if (Test-Path $podMasterUpgradeFile) {
+    Write-Host "Applying POD master-data schema upgrade..."
+    Invoke-SqlFile -Path $podMasterUpgradeFile -DatabaseName $Database
+}
+
 $podUpgradeFile = Join-Path $scriptDir "Upgrade-SalesPersonPOD.sql"
 if (Test-Path $podUpgradeFile) {
     Invoke-SqlFile -Path $podUpgradeFile -DatabaseName $Database

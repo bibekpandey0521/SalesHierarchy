@@ -49,7 +49,7 @@
                     <option value="@action" selected="@(action == selectedAction)">@action</option>
                 }
             </select>
-            <input type="search" name="q" value="@query" class="form-control form-control-sm" style="max-width: 260px;" placeholder="Search summary, e-mail, or ID..." />
+            <input type="search" name="q" value="@query" class="form-control form-control-sm" style="max-width: 260px;" placeholder="Search summary, e-mail, or Id..." />
             <button type="submit" class="btn btn-ghost btn-sm"><i class="bi bi-search me-1"></i>Filter</button>
             @if (!string.IsNullOrWhiteSpace(selectedEntity) || !string.IsNullOrWhiteSpace(selectedAction) || !string.IsNullOrWhiteSpace(query))
             {
@@ -64,7 +64,7 @@
             <div class="empty-state">
                 <i class="bi bi-clock-history"></i>
                 <div class="fw-semibold">No activity recorded</div>
-                <div class="text-hint small">Changes to stations, salespersons, PODs, dealers, mappings, and accounts will appear here.</div>
+                <div class="text-hint small">Changes to stations, salespersons, Pods, dealers, mappings, and accounts will appear here.</div>
             </div>
         }
         else
@@ -99,7 +99,7 @@
                             <td class="text-end">
                                 @if (!string.IsNullOrWhiteSpace(entry.Details))
                                 {
-                                    <button class="btn btn-sm btn-ghost" type="button" data-bs-toggle="collapse" data-bs-target="#audit-details-@entry.ID" aria-expanded="false" aria-controls="audit-details-@entry.ID" title="Show before/after data">
+                                    <button class="btn btn-sm btn-ghost" type="button" data-bs-toggle="collapse" data-bs-target="#audit-details-@entry.Id" aria-expanded="false" aria-controls="audit-details-@entry.Id" title="Show before/after data">
                                         <i class="bi bi-code-square"></i>
                                     </button>
                                 }
@@ -107,7 +107,7 @@
                         </tr>
                         @if (!string.IsNullOrWhiteSpace(entry.Details))
                         {
-                            <tr class="collapse" id="audit-details-@entry.ID">
+                            <tr class="collapse" id="audit-details-@entry.Id">
                                 <td colspan="6" class="bg-light">
                                     <pre class="mb-0 small text-wrap">@entry.Details</pre>
                                 </td>

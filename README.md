@@ -31,13 +31,15 @@ SalesHierarchy/
 
 | Table | Key | Notes |
 |---|---|---|
-| `PODStation` | `ID` | Optional `OSSPODStationId`, required `Name` |
+| `PODStation` | `ID` | `OSSPODStationId INT NOT NULL` (unique), required `Name` |
 | `SalesPerson` | `ID` | `ManagerId` self-reference is the source of truth for hierarchy |
-| `POD` | `ID` | Belongs to a `PODStation`; legacy `salespersonId` is kept for compatibility |
+| `POD` | `ID` | `OSSPODID INT NOT NULL` (unique), required `Name`, optional `PODStationId` assigned in the UI; legacy `salespersonId` is kept for compatibility |
 | `SalesPersonPOD` | `SalesPersonId` + `PODId` | Many-to-many POD ownership; source of truth for multi-POD assignment |
-| `Dealer` | `UniqueID` | `Code` is unique |
-| `salesdealermapping` | `UniqueID` | Links a salesperson to a dealer; duplicates blocked in the application |
+| `Dealer` | `UniqueID` | `Code` is unique (filtered index); `Name` falls back to the code when blank |
+| `salesdealermapping` | `UniqueID` | Links a salesperson to a dealer; duplicate pairs are blocked by a unique index and the application |
 | `AuditLog` | `ID` | Append-only history of business/account changes (added by this application); optional `RelatedSalesPersonId` scopes an event to a team |
+
+POD station assignment is deliberately separate from POD creation: new PODs are created unassigned and are linked to a station only on **POD Assignment Management**. A filtered unique index (`UX_POD_Station_Name` on `(PODStationId, Name)` for assigned rows) allows the same POD name to exist in different stations while preventing duplicates inside one station.
 
 No tables are recreated and no indexes/clustering are redesigned. Delete operations are blocked with a clear message while dependent records exist; no cascading deletes were added.
 
@@ -60,17 +62,24 @@ sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Upgrade-AuditLog.s
 sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Upgrade-SalesPersonPOD.sql
 ```
 
-Both scripts are idempotent. The POD migration never drops the legacy `POD.salespersonId` column.
+To move an existing database to the int-based POD master-data schema, run the preflighted upgrade scripts. They refuse to continue and list offending rows when data cannot be converted safely, and they never invent identifiers:
+
+```powershell
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Upgrade-PODMasterData.sql
+sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Upgrade-PODPodStationNameUniqueness.sql
+```
+
+The first script makes `OSSPODStationId`/`OSSPODID` `INT NOT NULL` and `PODStationId` nullable; the second adds the `UX_POD_Station_Name` filtered unique index. Both are idempotent, and all scripts never drop the legacy `POD.salespersonId` column.
 
 ### Reviewed workbook import
 
-The supplied `pods.xlsx` and `Sales Mapping With Dealer and POD.xlsx` rows were reviewed and applied to the local `SalesProdAuthDb` with:
+The supplied `pods.xlsx` and `Sales Mapping With Dealer and POD.xlsx` rows are reviewed and applied to the local `SalesProdAuthDb` with:
 
 ```powershell
-sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\SalesHierarchy.Database\Scripts\Import-ReviewedSalesData.sql
+sqlcmd -S localhost -E -C -I -b -d SalesProdAuthDb -i .\database\SalesHierarchy.Database\Scripts\Import-ReviewedSalesData.sql
 ```
 
-The import added 73 stations, 208 PODs, 34 salespeople, 208 POD-to-officer assignments, 40 dealers, and 67 dealer-to-officer mappings. It is idempotent and never overwrites existing names, designations, or owners.
+Under the current model the import brings in all **273** PODs from `pods.xlsx` with `PODStationId = NULL`, plus 73 stations, 34 salespeople, the verified POD-to-officer ownership rows, 40 dealers, and 67 dealer-to-officer mappings. Station↔POD relationships are never guessed by the import: after importing, a SystemAdmin assigns each POD to a station on **POD Assignment Management**. The local database module tables were intentionally cleared for this re-import; Identity users and roles were untouched.
 
 Verify it with the read-only script:
 
@@ -81,7 +90,7 @@ sqlcmd -S localhost -E -C -b -d SalesProdAuthDb -i .\database\Verify-ReviewedImp
 Review exceptions are documented in `docs/REPORTING-HIERARCHY-AND-POD.md`:
 
 - 3 manager links are intentionally `NULL` because the workbook gives conflicting parents.
-- 65 PODs are not imported because neither workbook supplies a station for them and `POD.PODStationId` is `NOT NULL`.
+- All 273 PODs are imported without a station; 208 of them have a verified station pair in the workbook and can be assigned immediately, while the remaining 65 stay unassigned until a station is confirmed.
 - Two `Trisuli POD Station` rows were normalized to the station master's `Trishuli POD Station`.
 - Dealer records use the dealer code as both `Name` and `Code` because the workbook contains no dealer names.
 
@@ -200,11 +209,18 @@ Then open the HTTPS URL shown in the console and sign in with the bootstrapped a
 - Approved POD station and POD lists
 - Search on each public list
 
-Public pages use read-only DTOs (`PublicSalesPersonDto`, `PublicPODStationDto`, `PublicPODDto`). Emails, dealer mappings, account data, and all write operations are unavailable.
+Public pages use read-only DTOs (`PublicSalesPersonDto`, `PublicPodStationDto`, `PublicPodDto`). Emails, dealer mappings, account data, and all write operations are unavailable.
 
 ### System Admin
 
-- Full CRUD for all five business tables (list, details, create, edit, delete confirmation)
+- Full CRUD for all five business tables (list, details, create, edit, delete confirmation), split into focused module controllers:
+  - `AdminPodStationController` — POD stations
+  - `AdminPodController` — PODs plus POD Assignment Management
+  - `AdminSalesPersonController` — salesperson records
+  - `AdminDealerController` — dealers
+  - `AdminSalesDealerMappingController` — dealer mappings
+  - `AdminController` — dashboard, hierarchy, activity log, user accounts and bulk upload
+- POD stations and PODs validate required fields and unique OSS identifiers. POD creation/edit manages only master data (name + OSS ID); station assignment happens on **POD Assignment Management**, where a station is chosen, PODs are searched and selected with a searchable multi-select, and assignments are saved or cleared in one transaction with an audit entry.
 - Search on list pages and database-populated dropdowns
 - Reporting-manager assignment with self-reporting and circular-hierarchy rejection. This is the only place where a salesperson's manager can be created or changed. The manager list follows the verified CXO → Head → Manager/Supervisor → Officer ladder; custom/legacy designations remain unrestricted.
 - Create/edit a salesperson and assign any number of PODs in one transaction, using a searchable multi-select with removable tags. Duplicate, missing, and non-existent POD IDs are rejected before any write, and the legacy `POD.salespersonId` column is kept in sync where it is safe to do so.
