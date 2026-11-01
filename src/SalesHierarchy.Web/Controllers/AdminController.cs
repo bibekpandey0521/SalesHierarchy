@@ -393,7 +393,7 @@ namespace SalesHierarchy.Web.Controllers
                     try { _salesPersonRepository.Delete(personCreatedId); } catch { /* best-effort compensation */ }
                 }
 
-                ModelState.AddModelError(string.Empty, "Account creation failed: " + ex.Message);
+                ModelState.AddModelError(string.Empty, "Account creation failed. Please try again later.");
                 LoadManagers();
                 return View(model);
             }

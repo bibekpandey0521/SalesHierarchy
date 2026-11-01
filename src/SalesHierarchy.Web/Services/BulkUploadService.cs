@@ -293,7 +293,7 @@ namespace SalesHierarchy.Web.Services
 
                     row.Status = BulkRowStatus.Failed;
                     row.CreatedSalesPersonId = null;
-                    row.Errors.Add("Account creation failed: " + ex.Message);
+                    row.Errors.Add("Account creation failed. Please try again later.");
                 }
             }
 

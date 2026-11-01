@@ -6,7 +6,7 @@
     <Project Path="src/SalesHierarchy.Web/SalesHierarchy.Web.csproj" />
   </Folder>
   <Folder Name="/database/">
-    <Project Path="database/SalesHierarchy.Database/SalesHierarchy.Database.sqlproj" Id="6a150783-62de-4234-a71c-46cbeb8c2193">
+    <Project Path="database/SalesHierarchy.Database/SalesHierarchy.Database.sqlproj" Id="68c3d30b-5a98-4b53-8366-669be3f431c9">
       <Build />
       <Deploy />
     </Project>
