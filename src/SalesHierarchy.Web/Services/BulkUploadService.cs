@@ -279,7 +279,7 @@ namespace SalesHierarchy.Web.Services
 
                     row.Status = BulkRowStatus.Imported;
                 }
-                catch (Exception ex)
+                catch
                 {
                     if (userCreated != null)
                     {

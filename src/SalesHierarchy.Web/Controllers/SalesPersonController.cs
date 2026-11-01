@@ -525,7 +525,7 @@ namespace SalesHierarchy.Web.Controllers
                     : $"Login account created for {member.Name}, but the invitation e-mail could not be sent. Use 'Resend invitation' once e-mail is configured.";
                 return RedirectToAction(nameof(TeamAccounts));
             }
-            catch (Exception ex)
+            catch
             {
                 if (userCreated != null)
                 {

@@ -381,7 +381,7 @@ namespace SalesHierarchy.Web.Controllers
 
                 return RedirectToAction("Index", "AdminSalesPerson");
             }
-            catch (Exception ex)
+            catch
             {
                 if (userCreated != null)
                 {
